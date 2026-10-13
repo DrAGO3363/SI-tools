@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SEO Analysis Dashboard</title>
+<style>
+:root {
+    --bg: #0f172a;
+    --surface: #1e293b;
+    --card: #1e293b;
+    --card-border: #334155;
+    --text: #f1f5f9;
+    --text-muted: #94a3b8;
+    --accent: #6366f1;
+    --accent-glow: rgba(99, 102, 241, 0.3);
+    --green: #22c55e;
+    --yellow: #eab308;
+    --red: #ef4444;
+    --orange: #f97316;
+    --radius: 12px;
+}
+[data-theme="light"] {
+    --bg: #f8fafc;
+    --surface: #ffffff;
+    --card: #ffffff;
+    --card-border: #e2e8f0;
+    --text: #1e293b;
+    --text-muted: #64748b;
+    --accent-glow: rgba(99, 102, 241, 0.15);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+}
+.container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+
+/* Header */
+.header {
+    background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%);
+    padding: 48px 0 60px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+.header::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(ellipse at center, rgba(99,102,241,0.15) 0%, transparent 70%);
+    animation: pulse 4s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
+.header h1 { font-size: 2rem; font-weight: 700; color: white; position: relative; }
+.header .domain { font-size: 1.1rem; color: #a5b4fc; margin-top: 8px; position: relative; }
+.header .timestamp { font-size: 0.85rem; color: #818cf8; margin-top: 4px; position: relative; }
+
+/* Theme Toggle */
+.theme-toggle {
+    position: fixed; top: 16px; right: 16px; z-index: 100;
+    background: var(--surface); border: 1px solid var(--card-border);
+    border-radius: 50%; width: 44px; height: 44px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 1.2rem; transition: all 0.3s;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+.theme-toggle:hover { transform: scale(1.1); }
+
+/* Overall Score */
+.score-hero {
+    display: flex; justify-content: center; align-items: center;
+    gap: 48px; padding: 40px 0; flex-wrap: wrap;
+}
+.score-gauge { position: relative; width: 180px; height: 180px; }
+.score-gauge svg { width: 100%; height: 100%; }
+.score-gauge .gauge-value {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    text-align: center;
+}
+.score-gauge .gauge-number { font-size: 3rem; font-weight: 800; color: #dc2626; }
+.score-gauge .gauge-grade { font-size: 1rem; color: var(--text-muted); }
+.score-stats { display: flex; gap: 24px; }
+.stat-card {
+    background: var(--card); border: 1px solid var(--card-border);
+    border-radius: var(--radius); padding: 20px 28px; text-align: center;
+    min-width: 100px;
+}
+.stat-value { font-size: 2rem; font-weight: 700; }
+.stat-label { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+.stat-critical .stat-value { color: var(--red); }
+.stat-warning .stat-value { color: var(--yellow); }
+.stat-pass .stat-value { color: var(--green); }
+
+/* Category Cards Grid */
+.categories { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; margin: 32px 0; }
+.category-card {
+    background: var(--card); border: 1px solid var(--card-border);
+    border-radius: var(--radius); padding: 20px; text-align: center;
+    cursor: pointer; transition: all 0.3s;
+    position: relative;
+}
+.category-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px var(--accent-glow); border-color: var(--accent); }
+.category-card .ring { width: 70px; height: 70px; margin: 0 auto 8px; }
+.category-card .ring-label {
+    position: absolute; top: 52px; left: 50%; transform: translate(-50%, -50%);
+    font-size: 1.1rem; font-weight: 700;
+}
+.ring-progress { transition: stroke-dasharray 1s ease; }
+.category-icon { font-size: 1.3rem; margin: 4px 0; }
+.category-name { font-size: 0.8rem; color: var(--text-muted); font-weight: 500; }
+
+/* Sections */
+.section {
+    background: var(--card); border: 1px solid var(--card-border);
+    border-radius: var(--radius); margin: 24px 0; overflow: hidden;
+}
+.section-header {
+    padding: 20px 24px; cursor: pointer; display: flex;
+    align-items: center; justify-content: space-between;
+    transition: background 0.2s;
+}
+.section-header:hover { background: rgba(99,102,241,0.05); }
+.section-header h2 { font-size: 1.15rem; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+.section-header .chevron { transition: transform 0.3s; font-size: 1.2rem; color: var(--text-muted); }
+.section-header .chevron.open { transform: rotate(180deg); }
+.section-body { padding: 0 24px 24px; display: none; }
+.section-body.open { display: block; animation: fadeIn 0.3s; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Tables */
+table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 0.9rem; }
+th { text-align: left; padding: 10px 12px; border-bottom: 2px solid var(--card-border); color: var(--text-muted); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; }
+td { padding: 10px 12px; border-bottom: 1px solid var(--card-border); vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(99,102,241,0.03); }
+.mono { font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 0.85rem; }
+.link-url { word-break: break-all; max-width: 400px; color: var(--accent); }
+
+/* Badges */
+.badge {
+    display: inline-block; padding: 2px 10px; border-radius: 100px;
+    font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+}
+.badge.critical { background: rgba(239,68,68,0.15); color: var(--red); }
+.badge.warning { background: rgba(234,179,8,0.15); color: var(--yellow); }
+.badge.pass { background: rgba(34,197,94,0.15); color: var(--green); }
+.badge.info { background: rgba(99,102,241,0.15); color: var(--accent); }
+
+/* Issues */
+.issue-item {
+    padding: 12px 16px; border-radius: 8px; margin: 6px 0;
+    font-size: 0.9rem; display: flex; align-items: flex-start; gap: 10px;
+}
+.issue-item.critical { background: rgba(239,68,68,0.08); border-left: 3px solid var(--red); }
+.issue-item.warning { background: rgba(234,179,8,0.08); border-left: 3px solid var(--yellow); }
+.issue-item.info { background: rgba(99,102,241,0.08); border-left: 3px solid var(--accent); }
+.issue-badge { flex-shrink: 0; }
+
+/* Bar Chart */
+.bar-row { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
+.bar-label { width: 150px; font-size: 0.85rem; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-muted); }
+.bar-track { flex: 1; height: 22px; background: var(--card-border); border-radius: 4px; overflow: hidden; }
+.bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent), #818cf8); border-radius: 4px; transition: width 1s ease; }
+.bar-value { width: 30px; font-size: 0.85rem; font-weight: 600; }
+
+/* Summary cards row */
+.summary-row { display: flex; gap: 16px; margin: 16px 0; flex-wrap: wrap; }
+.summary-item {
+    flex: 1; min-width: 120px; background: var(--bg); border-radius: 8px;
+    padding: 16px; text-align: center;
+}
+.summary-item .val { font-size: 1.5rem; font-weight: 700; }
+.summary-item .lbl { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* Footer */
+.footer { text-align: center; padding: 32px 0; color: var(--text-muted); font-size: 0.8rem; }
+
+@media (max-width: 768px) {
+    .score-hero { flex-direction: column; gap: 24px; }
+    .score-stats { flex-wrap: wrap; justify-content: center; }
+    .categories { grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); }
+    .container { padding: 16px; }
+}
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style id="kapris-i18n-style">
+.kapris-toolbar{position:fixed;top:16px;right:16px;z-index:1000;display:flex;align-items:center;gap:9px;direction:ltr}
+.kapris-toolbar .theme-toggle{position:static;flex:none}
+.kapris-language{display:flex;align-items:center;gap:6px;background:var(--surface);color:var(--text);border:1px solid var(--card-border);border-radius:22px;padding:0 12px;height:44px;box-shadow:0 4px 12px rgba(0,0,0,.15);font-size:16px}
+.kapris-language select{border:0;background:transparent;color:var(--text);font:600 13px inherit;cursor:pointer;outline:none;max-width:90px}
+.kapris-language option{color:#111;background:#fff}
+html[dir="rtl"] body{direction:rtl;font-family:Tahoma,"Vazirmatn",Arial,sans-serif}
+html[dir="rtl"] .header,html[dir="rtl"] .score-hero,html[dir="rtl"] .category-card{text-align:center}
+html[dir="rtl"] .section-header,html[dir="rtl"] .issue-item,html[dir="rtl"] .section-body{text-align:right}
+html[dir="rtl"] .kapris-live-head{text-align:right}
+html[dir="rtl"] .score-gauge svg,html[dir="rtl"] .ring{direction:ltr}
+html[dir="rtl"] .chevron{margin-right:auto;margin-left:0}
+@media(max-width:600px){.kapris-toolbar{top:8px;right:8px;gap:5px}.kapris-toolbar .theme-toggle{width:38px;height:38px}.kapris-language{height:38px;padding:0 8px}}
+</style><style id="seo-visual-2026">
+/* Universal SEO 2.0 — premium UI */
+:root{--bg:#080d1c;--surface:#111b31;--card:#121d34;--card-border:#293957;--text:#f3f7ff;--text-muted:#a0b2d0;--accent:#8b78ff;--accent-glow:rgba(139,120,255,.24);--green:#35d6aa;--yellow:#ffcd6b;--red:#ff6e8a;--radius:18px}
+[data-theme="light"]{--bg:#f3f6fd;--surface:#ffffff;--card:#ffffff;--card-border:#dfe6f4;--text:#182440;--text-muted:#667793;--accent:#6754dd;--accent-glow:rgba(103,84,221,.13)}
+body{background:radial-gradient(ellipse 65% 22% at 50% 0%,rgba(114,95,238,.18),transparent),var(--bg);font-family:Inter,Tahoma,Arial,sans-serif}
+.header{padding:72px 0 70px;background:linear-gradient(120deg,#0c1732 0%,#24215b 55%,#3d286c 100%);border-bottom:1px solid rgba(255,255,255,.1)}
+.header:before{background:radial-gradient(circle at 78% 45%,rgba(147,197,253,.17),transparent 36%),radial-gradient(circle at 20% 0%,rgba(232,121,249,.14),transparent 40%);animation:none}
+.header h1{font-size:clamp(1.9rem,4vw,3.1rem);letter-spacing:-.035em}.header .domain{font-size:1.05rem;color:#bcd2ff}.header .timestamp{color:#c4b5fd}
+.kapris-live{position:relative;margin:-37px auto 28px;z-index:2;padding:26px 28px;border-radius:22px;box-shadow:0 22px 75px rgba(0,0,0,.2);border:1px solid var(--card-border);background:var(--surface)}
+.kapris-live-head h2{font-size:1.35rem;letter-spacing:-.02em}.kapris-live-head p{font-size:.87rem;margin-top:4px}
+.kapris-live button,.section-audit-btn{background:linear-gradient(125deg,#7c65f4,#a355e5)!important;border:0!important;border-radius:12px!important;font-weight:700!important;box-shadow:0 9px 23px rgba(114,86,224,.23);transition:transform .18s,box-shadow .18s}
+.kapris-live button:hover,.section-audit-btn:hover{transform:translateY(-2px);box-shadow:0 14px 30px rgba(114,86,224,.34)}
+.site-picker{margin-top:20px;padding:16px;background:var(--bg);border-radius:14px;gap:12px}.site-picker input{background:var(--surface)!important;color:var(--text)!important;border:1px solid var(--card-border)!important;border-radius:10px!important;min-height:48px}.site-picker input:focus,.psi-key-box input:focus{outline:2px solid var(--accent);outline-offset:2px}
+.score-hero{gap:30px;padding:24px 0}.score-gauge{filter:drop-shadow(0 8px 24px rgba(129,104,248,.18))}.stat-card{border-radius:16px;box-shadow:0 9px 30px rgba(0,0,0,.045)}
+.categories{grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:14px}.category-card{border-radius:18px;padding:20px 12px 16px;background:linear-gradient(155deg,var(--card),var(--surface));box-shadow:0 6px 22px rgba(0,0,0,.035)}.category-card:hover{transform:translateY(-5px)}.category-card .ring-label{font-size:1rem;white-space:nowrap}.category-name{font-size:.83rem;color:var(--text);font-weight:650}.category-icon{font-size:1.5rem}
+.category-card .card-hint{font-size:10px;color:var(--text-muted);margin-top:8px;line-height:1.4}
+.section{border-radius:18px;margin:16px 0;box-shadow:0 7px 30px rgba(0,0,0,.035)}.section-header{padding:23px 25px}.section-header h2{font-size:1.05rem;flex-wrap:wrap}.section-body{padding:0 25px 24px}.section-header .badge{font-size:.73rem;letter-spacing:0;white-space:nowrap}
+.kapris-current-data{background:transparent!important;border:0!important;padding:0!important}.kapris-current-label{font-size:.92rem;margin:16px 0;color:var(--accent)}.kapris-data-list{gap:9px}.kapris-data-item{border-radius:11px!important;padding:12px 14px!important;background:var(--bg);border-color:var(--card-border)!important;line-height:1.8}
+.psi-key-box{display:flex;flex-direction:column;gap:12px;background:linear-gradient(135deg,rgba(139,120,255,.11),rgba(44,183,201,.06));border:1px solid var(--card-border);border-radius:17px;padding:22px;margin:18px 0}.psi-key-box label{font-size:1.02rem;font-weight:800}.psi-key-box input{width:100%;max-width:650px;padding:14px;border:1px solid var(--card-border);border-radius:11px;background:var(--surface);color:var(--text);font:inherit;direction:ltr}.psi-key-box small{color:var(--text-muted);line-height:1.9}.psi-key-box .section-audit-btn{align-self:flex-start;color:#fff;padding:13px 22px;cursor:pointer}.psi-guide{margin-top:8px;padding:17px 19px;border-radius:13px;background:var(--surface);border:1px solid var(--card-border)}.psi-guide h3{font-size:1rem;margin-bottom:12px}.psi-guide ol{padding-inline-start:24px}.psi-guide li{margin:9px 0;line-height:1.9}.psi-guide a{color:var(--accent);font-weight:700}.psi-guide .warning{margin-top:10px;font-size:.85rem;color:var(--text-muted)}
+.kapris-toolbar{right:20px;top:18px}.footer{opacity:.65}
+@media(max-width:650px){.header{padding:78px 0 67px}.kapris-live{margin:-27px 14px 20px;padding:18px}.categories{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.category-card{padding:15px 8px}.section-header{padding:16px}.section-body{padding:0 16px 16px}.score-stats{gap:9px}.stat-card{padding:14px;min-width:80px}.psi-key-box{padding:15px}}
+</style><style id="amir-redesign">
+/* Amir Edition — redesigned layout */
+:root{--bg:#0b1220;--surface:#152238;--card:#152238;--card-border:#2a3d55;--text:#f2f7fc;--text-muted:#a1b3c8;--accent:#11b7a3;--accent-glow:rgba(17,183,163,.22);--green:#30d5a0;--yellow:#f8bc55;--red:#ff6b78}
+[data-theme="light"]{--bg:#f2f6f9;--surface:#ffffff;--card:#ffffff;--card-border:#dce7ee;--text:#15283c;--text-muted:#657a8d;--accent:#087f76;--accent-glow:rgba(8,127,118,.13)}
+body{background:radial-gradient(ellipse at 85% 0%,rgba(17,183,163,.10),transparent 35%),var(--bg)}
+.header{background:linear-gradient(120deg,#0a2230 0%,#104b56 58%,#117f7c 100%);padding:66px 0 98px;text-align:start;border-bottom:1px solid rgba(255,255,255,.1)}
+.header::before{background:radial-gradient(circle at 80% 60%,rgba(255,255,255,.10),transparent 45%);animation:none}
+.header .container{max-width:1280px}.header h1{font-size:clamp(2rem,5vw,3.7rem);letter-spacing:-.045em}.header .domain{color:#b4f7eb}.header .timestamp{color:#c0dfe4}
+.kapris-live{max-width:1230px;margin:-60px auto 22px;position:relative;z-index:2;border-radius:24px;padding:28px 32px;box-shadow:0 25px 65px rgba(0,0,0,.22);border:1px solid var(--card-border)}
+.kapris-live-head{align-items:flex-end}.kapris-live-head h2{font-size:1.55rem}.kapris-live-head p{max-width:550px}
+.kapris-live button,.section-audit-btn{background:linear-gradient(135deg,#0eaa99,#087e88);border-radius:12px;font-weight:700;box-shadow:0 8px 20px rgba(5,150,137,.18)}
+.site-picker{border:0;background:var(--bg);padding:16px 18px;border-radius:14px;margin:20px 0 6px}.site-picker input{background:var(--surface);border:1px solid var(--card-border);border-radius:12px;padding:14px;color:var(--text)}
+#audit-data-container{max-width:1280px}.score-hero{background:var(--surface);border:1px solid var(--card-border);border-radius:24px;margin:20px 0 28px;padding:28px;justify-content:space-evenly}.score-gauge{width:160px;height:160px}.score-stats{flex-wrap:wrap}.stat-card{background:var(--bg);border-radius:15px}
+.categories{grid-template-columns:repeat(auto-fit,minmax(174px,1fr));gap:13px}.category-card{border-radius:17px;padding:20px 12px;box-shadow:0 5px 14px rgba(0,0,0,.04);border:1px solid var(--card-border)}.category-card:hover{box-shadow:0 16px 35px var(--accent-glow)}.category-card .ring{width:66px;height:66px}.category-name{font-size:.86rem;font-weight:700;color:var(--text)}.category-card .ring-label{top:50px;font-size:1rem}.card-hint{font-size:.69rem;margin-top:7px;color:var(--text-muted)}
+.section{border-radius:18px;border:1px solid var(--card-border);box-shadow:none}.section-header{padding:19px 24px}.section-header:hover{background:var(--accent-glow)}.section-body{padding:0 24px 24px}.kapris-current-data{border:0;background:var(--bg);border-radius:14px;padding:18px}.kapris-data-item{background:var(--surface)}
+.audit-progress{margin-top:18px;padding:20px;border:1px solid var(--card-border);border-radius:16px;background:var(--bg)}.audit-progress[hidden]{display:none!important}.progress-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-weight:700}.progress-top strong{font-size:1.3rem;color:var(--accent)}.progress-track{height:12px;border-radius:30px;overflow:hidden;background:var(--card-border)}#progress-fill{height:100%;width:0;background:linear-gradient(90deg,#0d8d92,#1cdbab);border-radius:30px;transition:width .5s ease}.progress-stages{display:flex;justify-content:space-between;gap:8px;margin-top:12px;flex-wrap:wrap}.progress-stages span{font-size:.73rem;color:var(--text-muted)}.progress-stages span.done{color:var(--accent);font-weight:800}
+html[dir="rtl"] .header{text-align:right}html[dir="rtl"] .header .container{text-align:right}html[dir="rtl"] .kapris-live-head{text-align:right}
+@media(max-width:700px){.header{padding:86px 0 100px}.kapris-live{margin:-54px 12px 15px;padding:20px}.kapris-live-head{align-items:stretch}.categories{grid-template-columns:repeat(2,minmax(0,1fr))}.score-hero{margin:14px 0;padding:18px}.progress-stages span{font-size:.63rem}}
+html[dir="rtl"] .psi-guide-en{display:none}html[dir="ltr"] #psi-key-guide{display:none}
+</style></head>
+<body>
+
+<div class="kapris-toolbar">
+ <label class="kapris-language" for="kapris-lang-select"><span aria-hidden="true">🌐</span><select id="kapris-lang-select" aria-label="Dashboard language" onchange="kaprisSetLanguage(this.value)"><option value="en">English</option><option value="fa">فارسی</option></select></label>
+ <button class="theme-toggle" type="button" onclick="toggleTheme()" title="Toggle theme" aria-label="Toggle light and dark mode">🌙</button>
+</div>
+
+<div class="header">
+    <div class="container">
+        <h1>SEO Intelligence Dashboard</h1>
+        <div class="domain" id="current-domain">—</div>
+        <div class="timestamp">منتظر بررسی سایت</div>
+    </div>
+</div>
+
+
+<style>
+.kapris-live{max-width:1200px;margin:24px auto 0;padding:20px;border:1px solid var(--card-border);background:var(--surface);border-radius:12px}
+.kapris-live-head{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.kapris-live button{background:var(--accent);color:#fff;border:0;border-radius:9px;padding:12px 18px;font:inherit;cursor:pointer}
+.kapris-live button:disabled{opacity:.5;cursor:wait}
+.kapris-live .detail{margin-top:12px;color:var(--text-muted);font-size:.9rem}
+.kapris-live .check-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px;margin-top:14px}
+.kapris-live .check{padding:9px;border:1px solid var(--card-border);border-radius:7px}
+.kapris-current-label{font-weight:700;color:var(--accent);margin:10px 0}.kapris-current-data{padding:12px;border:1px solid var(--card-border);border-radius:10px;margin:12px 0;overflow-wrap:anywhere}.kapris-data-list{display:grid;gap:7px;margin:6px 0}.kapris-data-item{padding:7px 10px;border:1px solid var(--card-border);border-radius:7px;overflow-wrap:anywhere}.kapris-archive{margin:14px 0;padding:12px;border:1px dashed var(--card-border);border-radius:8px}.kapris-archive summary{cursor:pointer;font-weight:700}
+.site-picker{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:16px 0;padding:12px;border:1px solid var(--card-border);border-radius:10px}.site-picker input{min-width:250px;flex:1;padding:11px;border:1px solid var(--card-border);border-radius:8px;background:var(--card-bg);color:var(--text-primary);font-size:15px}.site-picker label{font-weight:700}.site-picker #site-target-note{font-size:12px;color:var(--text-muted)}
+</style>
+<style>.psi-key-box{margin:12px 0;padding:15px;border:1px solid var(--card-border);border-radius:10px;background:var(--surface)}.psi-key-box input{width:100%;padding:11px;border:1px solid var(--card-border);border-radius:8px;background:var(--bg);color:var(--text);font:inherit;direction:ltr}.psi-key-box label{display:block;margin-bottom:8px;font-weight:700}.psi-key-box small{display:block;margin-top:8px;color:var(--text-muted)}</style>
+<style>.audit-hint{font-size:11px;line-height:1.5;color:var(--text-muted);margin-top:8px}.psi-key-box{margin:12px 0;padding:16px;border:1px solid var(--card-border);border-radius:10px;display:flex;flex-direction:column;gap:10px}.psi-key-box input{padding:12px;border-radius:8px;border:1px solid var(--card-border);background:var(--bg);color:var(--text);width:100%;max-width:550px}.psi-key-box small{color:var(--text-muted)}.section-audit-btn{padding:10px 16px;background:var(--accent);color:#fff;border:0;border-radius:8px;cursor:pointer;align-self:flex-start}.category-card .ring-label{font-size:12px;white-space:nowrap}</style>
+<div class="kapris-live">
+ <div class="kapris-live-head"><div><h2>🔄 SEO Audit Studio</h2><p style="color:var(--text-muted)">Review the selected URL and explore live results in the cards below.</p></div><button id="kapris-refresh" type="button">Run New Audit</button></div>
+ <div class="site-picker"><label for="site-target">🌐 <span class="site-picker-label">Website URL</span></label><input id="site-target" type="url" dir="ltr" spellcheck="false" placeholder="https://example.com/" value=""><span id="site-target-note"></span></div>
+ <div id="audit-progress" class="audit-progress" hidden><div class="progress-top"><span id="progress-stage">Preparing audit</span><strong id="progress-number">0%</strong></div><div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress-track"><div id="progress-fill"></div></div><div class="progress-stages" id="progress-stages"><span data-step="fetching">01 · Fetch</span><span data-step="analyzing">02 · Analyze</span><span data-step="crawling">03 · Crawl</span><span data-step="external">04 · APIs</span><span data-step="scoring">05 · Score</span></div></div>
+ <div id="kapris-status" class="detail" role="status" aria-live="polite">Checking audit status…</div>
+ <div id="kapris-result"></div>
+</div>
+<script>
+(function(){
+ const siteInput=document.getElementById('site-target');
+ const button=document.getElementById('kapris-refresh'),status=document.getElementById('kapris-status'),out=document.getElementById('kapris-result');
+ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const categoriesMap={security:'security',social:'social',robots:'robots',broken_links:'broken_links',internal_links:'internal_links',redirects:'redirects',llms_txt:'llms_txt',pagespeed:'pagespeed',onpage:'onpage',readability:'readability',article:'article',entity:'entity',link_profile:'link_profile',hreflang:'hreflang',duplicate_content:'duplicate_content'};
+ const dataMap={broken_links:'link_audit',internal_links:'link_audit',redirects:'link_audit',llms_txt:'llms_audit',pagespeed:'pagespeed_audit',readability:'readability_audit',article:'article_audit',entity:'entity_audit',link_profile:'link_profile_audit',hreflang:'hreflang_audit',duplicate_content:'duplicate_audit'};
+ const labels={score:'امتیاز',pages_crawled:'صفحات بررسی‌شده',links_discovered:'لینک‌های کشف‌شده',links_checked:'لینک‌های بررسی‌شده',broken:'لینک‌های خراب',redirected:'لینک‌های تغییرمسیر',redirect_chains:'زنجیره تغییرمسیر',errors:'خطاها',files:'فایل‌ها',status:'وضعیت',valid:'معتبر',url:'نشانی',mobile:'موبایل',desktop:'دسکتاپ',strategies:'نتایج دستگاه‌ها',error:'خطا',http_status:'کد HTTP',configured_api_key:'کلید API تنظیم شده',api_key_source:'منبع کلید',note:'توضیح',pages_checked:'صفحات بررسی‌شده',pages_scored:'صفحات امتیازدهی‌شده',outbound_links:'لینک‌های خروجی',nofollow:'nofollow',sponsored:'sponsored',ugc:'ugc',tags_found:'تگ‌های یافت‌شده',issues_found:'مشکلات یافت‌شده',duplicate_groups:'گروه‌های تکراری',affected_pages:'صفحات درگیر',title:'عنوان',description:'توضیحات',content_hash:'محتوای یکسان',sample:'نمونه‌ها',words:'کلمات',paragraphs:'پاراگراف‌ها',h2:'تیترهای H2',h3:'تیترهای H3',images:'تصاویر',is_article:'مقاله شناسایی شده',types:'نوع داده‌ها',nodes:'گره‌ها',blocks:'بلوک‌ها',parse_errors:'خطاهای ساختاری',google_reason:'دلیل خطای گوگل',google_status:'وضعیت گوگل',guidance:'راهنما',category:'دسته',name:'نام',passed:'موفق',checks:'بررسی‌ها'};
+ const L=(fa,en)=>document.documentElement.lang==='fa'?fa:en; const labelsEN={score:'Score',note:'Note',error:'Error',status:'Status',url:'URL',mobile:'Mobile',desktop:'Desktop',pages_checked:'Pages checked',pages_crawled:'Pages crawled',outbound_links:'Outbound links',tags_found:'Tags found',issues_found:'Issues found',sample:'Samples',checks:'Checks',headers:'Headers',present:'Present',value:'Value',score:'Score'};function field(k){return (document.documentElement.lang==='fa'?labels:labelsEN)[k]||k.replaceAll('_',' ')}
+ function value(v){if(v===null||v===undefined)return '—';if(typeof v==='boolean')return v?L('بله','Yes'):L('خیر','No');return String(v)}
+ function details(data,depth=0){
+  if(data===null||data===undefined)return '<span>N/A</span>';
+  if(Array.isArray(data)){
+   if(!data.length)return '<span>'+L('موردی ثبت نشده','No items')+'</span>';
+   if(depth>2)return '<span>'+data.length+' '+L('مورد','items')+'</span>';
+   return '<div class="kapris-data-list">'+data.slice(0,12).map((v,i)=>'<div class="kapris-data-item">'+(typeof v==='object'?details(v,depth+1):esc(value(v)))+'</div>').join('')+(data.length>12?'<small>+'+(data.length-12)+' '+L('مورد دیگر','more items')+'</small>':'')+'</div>';
+  }
+  if(typeof data==='object'){
+   return '<div class="kapris-data-list">'+Object.entries(data).filter(([k])=>!['page_metadata','page_sample','sample','internal_link_sample'].includes(k)||depth===0).map(([k,v])=>{
+    if((k==='sample'||k==='page_metadata')&&Array.isArray(v)&&v.length>8)return '<details><summary>'+esc(field(k))+' ('+v.length+')</summary>'+details(v.slice(0,8),depth+1)+'</details>';
+    return '<div class="kapris-data-item"><strong>'+esc(field(k))+': </strong>'+((v&&typeof v==='object')?details(v,depth+1):esc(value(v)))+'</div>';
+   }).join('')+'</div>';
+  }
+  return esc(value(data));
+ }
+ function sectionData(r,key){
+  if(key==='security')return r.security_audit||{score:r.categories?.security,note:'این بررسی به کلید نیاز ندارد؛ هدرهای پاسخ سرور مستقیماً بررسی می‌شوند.'};
+  if(key==='social')return {score:r.categories?.social,note:'امتیاز بر اساس وجود متاتگ‌های شبکه اجتماعی است.'};
+  if(key==='robots')return {score:r.categories?.robots,note:'وجود robots.txt و دستورهای پایه بررسی شده است.'};
+  if(key==='onpage')return {score:r.categories?.onpage,title:r.title,meta_description:r.meta_description,h1:r.h1,canonical:r.canonical,images:r.images,missing_alt:r.missing_alt,jsonld_blocks:r.jsonld_blocks,checks:r.checks};
+  return r[dataMap[key]]||{score:r.categories?.[key]};
+ }
+ function updateDomain(url){try{const u=new URL(url);document.getElementById('current-domain').textContent=u.host;document.title='SEO Report — '+u.host;}catch(e){}}
+ function render(r){document.getElementById('audit-data-container').style.display='block';
+  if(!r)return;
+  if(!document.body.dataset.liveCleaned){document.body.dataset.liveCleaned='1';document.querySelectorAll('#section-environment,#section-env_fixes,#section-issues,#section-recs').forEach(e=>e.remove());const legacyIntro=document.querySelector('.score-hero + p');if(legacyIntro)legacyIntro.remove();}
+  if(r.url)updateDomain(r.url);
+  const score=Math.max(0,Math.min(100,Number(r.score)||0));
+  const grade=score>=90?'A':score>=80?'B':score>=70?'C':score>=60?'D':'F';
+  const color=score>=80?'#22c55e':score>=60?'#eab308':'#ef4444';
+  const gauge=document.querySelector('.score-gauge');
+  if(gauge){gauge.querySelector('.gauge-number').textContent=String(score);gauge.querySelector('.gauge-number').style.color=color;gauge.querySelector('.gauge-grade').textContent='Homepage · Grade: '+grade;const arc=gauge.querySelectorAll('circle')[1];if(arc){arc.setAttribute('stroke',color);arc.setAttribute('stroke-dasharray',(534.07*score/100).toFixed(2)+' 534.07');}}
+  const checks=Array.isArray(r.checks)?r.checks:[];
+  const passed=checks.filter(c=>c.passed).length;
+  const stat=document.querySelector('.score-stats');
+  if(stat){stat.querySelector('.stat-critical .stat-value').textContent=String(checks.length-passed);stat.querySelector('.stat-warning .stat-value').textContent=String(passed);stat.querySelector('.stat-pass .stat-value').textContent=String(checks.length);}
+  document.querySelector('.header .timestamp').textContent=L(L('آخرین بررسی: ','Last audit: '),'Last audit: ')+String(r.timestamp||'').slice(0,10);const rd=document.getElementById('report-date');if(rd)rd.textContent=String(r.timestamp||'').slice(0,10);
+  out.innerHTML='<p><strong>امتیاز صفحه اصلی: '+esc(score)+'/100</strong> · '+esc(r.timestamp)+' · HTTP '+esc(r.http_status)+'</p><div class="check-grid">'+checks.map(c=>'<div class="check">'+(c.passed?'✅':'❌')+' '+esc(c.name)+'</div>').join('')+'</div>';
+  document.querySelectorAll('.category-card').forEach(card=>{
+   const id=(card.getAttribute('onclick')||'').match(/scrollToSection\('([^']+)'\)/)?.[1];
+   const key=categoriesMap[id];if(!key)return;
+   const raw=r.categories?.[key],num=typeof raw==='number'&&Number.isFinite(raw)?Math.max(0,Math.min(100,raw)):null;
+   const label=card.querySelector('.ring-label');const display=num===null?(key==='hreflang'?L('بدون تگ','No tags'):key==='link_profile'?L('آمار لینک','Link stats'):key==='pagespeed'?L('بدون امتیاز','Not scored'):L('نامشخص','Unknown')):String(Math.round(num));if(label)label.textContent=display;const hint=card.querySelector('.card-hint')||document.createElement('div');hint.className='card-hint';hint.textContent=num===null?(key==='pagespeed'?L('جزئیات و کلید API در پایین','API key in details'):key==='link_profile'?L('داده بک‌لینک موجود نیست','Backlink data unavailable'):key==='hreflang'?L('ممکن است برای سایت لازم نباشد','May not be required'):L('اطلاعات کافی نیست','Insufficient data')):L('از ۱۰۰ امتیاز','out of 100');if(!hint.parentNode)card.appendChild(hint);
+   const arc=card.querySelector('.ring-progress');if(arc){arc.setAttribute('stroke',num===null?'#94a3b8':num>=80?'#22c55e':num>=60?'#eab308':'#ef4444');arc.setAttribute('stroke-dasharray',num===null?'0 251.327':(251.327*num/100).toFixed(2)+' 251.327');}
+  });
+  Object.keys(categoriesMap).forEach(key=>{
+   const body=document.getElementById('body-'+key);if(!body)return;
+   let panel=body.querySelector('.kapris-current-data');
+   if(!panel){
+    const archive=document.createElement('div');archive.className='kapris-archive';archive.style.display='none';
+    const credential=body.querySelector('#performance-credentials');if(credential)credential.remove();
+    while(body.firstChild)archive.appendChild(body.firstChild);
+    if(credential)body.appendChild(credential);
+    body.appendChild(archive);archive.remove();
+    if(key==='pagespeed'){const credential=body.querySelector('#performance-credentials');if(credential)body.insertBefore(credential,archive);}
+    panel=document.createElement('div');panel.className='kapris-current-data';body.appendChild(panel);
+   }
+   const rawScore=r.categories?.[key];const numeric=typeof rawScore==='number'&&Number.isFinite(rawScore);const shown=numeric?Math.round(rawScore)+'/100':(key==='hreflang'?L('بدون تگ','No tags'):key==='link_profile'?L('آمار لینک‌ها','Link statistics'):key==='pagespeed'?L('بدون امتیاز','Not scored'):L('نامشخص','Unknown'));const sec=document.getElementById('section-'+key);const badge=sec?.querySelector('.section-header .badge');if(badge){badge.textContent=shown;badge.className='badge '+(numeric?(rawScore>=80?'pass':rawScore>=60?'warning':'critical'):'info');}panel.innerHTML='<div class="kapris-current-label">نتایج آخرین بررسی · '+esc(r.timestamp)+' · '+esc(shown)+'</div>'+details({...sectionData(r,key),score:rawScore??null});
+  });
+  const legacy=document.querySelector('.score-hero + p');if(legacy&&legacy.textContent.includes('archived'))legacy.textContent='کارت‌ها و جزئیات با آخرین نتیجه بررسی به‌روزرسانی شده‌اند؛ گزارش قدیمی در بخش بایگانی هر قسمت قابل مشاهده است.';
+ }
+ const stageLabels={starting:['در حال شروع','Starting'],fetching:['دریافت صفحه','Fetching page'],analyzing:['تحلیل صفحه','Analyzing page'],crawling:['بررسی لینک‌ها','Crawling links'],external:['بررسی سرویس‌ها','Checking APIs'],scoring:['محاسبه امتیازها','Calculating scores'],complete:['بررسی کامل شد','Audit complete'],failed:['بررسی ناموفق','Audit failed']};
+ function progressUI(percent,stage,visible=true){const box=document.getElementById('audit-progress');box.hidden=!visible;if(!visible)return;const n=Math.max(0,Math.min(100,Number(percent)||0));document.getElementById('progress-fill').style.width=n+'%';document.getElementById('progress-number').textContent=n+'%';document.getElementById('progress-track').setAttribute('aria-valuenow',String(n));document.getElementById('progress-stage').textContent=(stageLabels[stage]||stageLabels.starting)[document.documentElement.lang==='fa'?0:1];document.querySelectorAll('#progress-stages span').forEach((e,i)=>{const order=['fetching','analyzing','crawling','external','scoring'];e.classList.toggle('done',order.indexOf(stage)>=i||stage==='complete');});}
+ let pending=null;
+ async function poll(){
+  try{
+   const response=await fetch('/api/status?t='+Date.now(),{cache:'no-store'});if(!response.ok)throw Error('Backend unavailable');
+   const x=await response.json();button.disabled=!!x.running;progressUI(x.progress??0,x.stage||'starting',!!x.running||(siteInput.dataset.requested==='1'&&(x.stage==='complete'||x.stage==='failed')));
+   status.textContent=x.running?L('بررسی در حال اجراست…','Audit in progress…'):x.error?L('بررسی ناموفق: ','Audit failed: ')+x.error:x.result?L('آخرین بررسی: ','Last audit: ')+x.result.timestamp:L('هنوز گزارشی ثبت نشده است.','No audit yet.');
+   if(x.result&&!x.running && siteInput.value.trim() && siteInput.dataset.requested==='1'){render(x.result);}
+   if(x.running){pending=setTimeout(poll,1500);}else{pending=null;}
+  }catch(e){button.disabled=false;status.textContent='ارتباط با سرور برقرار نشد: '+e.message;pending=null;}
+ }
+ siteInput.addEventListener('input',()=>{siteInput.dataset.edited='1';});
+ button.addEventListener('click',async()=>{
+  if(pending){clearTimeout(pending);pending=null;}
+  button.disabled=true;progressUI(2,'starting');document.getElementById('audit-data-container').style.display='none';out.innerHTML='';updateDomain(siteInput.value);status.textContent=L('در حال شروع بررسی…','Starting audit…');
+  try{const r=await fetch('/api/audit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:siteInput.value.trim(),pagespeed_key:document.getElementById('psi-api-key').value.trim()}),cache:'no-store'});if(!r.ok){const err=await r.json().catch(()=>({}));throw Error(err.error||'HTTP '+r.status);}siteInput.dataset.edited='';siteInput.dataset.requested='1';updateDomain(siteInput.value);await poll();}
+  catch(e){status.textContent='خطا در شروع بررسی: '+e.message;button.disabled=false;}
+ });
+ poll();
+})();
+</script>
+
+<div class="container" id="audit-data-container" style="display:none">
+
+    <!-- Overall Score -->
+    <div class="score-hero">
+        <div class="score-gauge">
+            <svg viewBox="0 0 200 200">
+                <circle cx="100" cy="100" r="85" fill="none" stroke="var(--card-border)" stroke-width="12"/>
+                <circle cx="100" cy="100" r="85" fill="none" stroke="#dc2626" stroke-width="12"
+                    stroke-dasharray="245.7 534.07" stroke-linecap="round"
+                    transform="rotate(-90 100 100)"/>
+            </svg>
+            <div class="gauge-value">
+                <div class="gauge-number">46</div>
+                <div class="gauge-grade">Grade: F</div>
+            </div>
+        </div>
+        <div class="score-stats">
+            <div class="stat-card stat-critical">
+                <div class="stat-value">1</div>
+                <div class="stat-label">Critical</div>
+            </div>
+            <div class="stat-card stat-warning">
+                <div class="stat-value">3</div>
+                <div class="stat-label">Warnings</div>
+            </div>
+            <div class="stat-card stat-pass">
+                <div class="stat-value">0</div>
+                <div class="stat-label">Info</div>
+            </div>
+        </div>
+    </div>
+
+    <p style="color:var(--text-muted);text-align:center;margin:8px 0 20px">The score above reflects the latest homepage-only audit. Category cards and detailed sections below are from the archived August 24, 2026 report and are not refreshed yet.</p>
+    <!-- Category Cards -->
+    <div class="categories">
+        
+        <div class="category-card" onclick="scrollToSection('security')">
+            <svg class="ring" viewBox="0 0 90 90">
+                <circle cx="45" cy="45" r="40" fill="none" stroke="var(--card-border)" stroke-width="6"/>
+                <circle cx="45" cy="45" r="40" fill="none" stroke="#ef4444" stroke-width="6"
+                    stroke-dasharray="62.8 251.327" stroke-linecap="round"
+                    transform="rotate(-90 45 45)" class="ring-progress"/>
+            </svg>
+            <div class="ring-label">25</div>
+            <div class="category-icon">🔒</div>
+            <div class="category-name">Security Headers</div>
+        </div>
+        <div class="category-card" onclick="scrollToSection('social')">
+            <svg class="ring" viewBox="0 0 90 90">
+                <circle cx="45" cy="45" r="40" fill="none" stroke="var(--card-border)" stroke-width="6"/>
+                <circle cx="45" cy="45" r="40" fill="none" stroke="#ef4444" stroke-width="6"
+                    stroke-dasharray="0.0 251.327" stroke-linecap="round"
+                    transform="rotate(-90 45 45)" class="ring-progress"/>
+            </svg>
+            <div class="ring-label">0</div>
+            <div class="category-icon">📱</div>
+            <div class="category-name">Social Meta</div>
+        </div>
+        <div class="category-card" onclick="scrollToSection('robots')">
+            <svg class="ring" viewBox="0 0 90 90">
+                <circle cx="45" cy="45" r="40" fill="none" stroke="var(--card-border)" stroke-width="6"/>
+                <circle cx="45" cy="45" r="40" fill="none" stroke="#22c55e" stroke-width="6"
+                    stroke-dasharray="201.1 251.327" stroke-linecap="round"
+                    transform="rotate(-90 45 45)" class="ring-progress"/>
+            </svg>
+            <div class="ring-label">80</div>
+            <div class="category-icon">🤖</div>
+            <div class="category-name">Robots & Crawlers</div>
+        </div>
+        <div class="category-card" onclick="scrollToSection('broken_links')">
+            <svg class="ring" viewBox="0 0 90 90">
+                <circle cx="45" cy="45" r="40" fill="none" stroke="var(--card-border)" stroke-width="6"/>
+                <circle cx="45" cy="45" r="40" fill="none" stroke="#22c55e" stroke-width="6"
+                    stroke-dasharray="251.3 251.327" stroke-linecap="round"
+                    transform="rotate(-90 45 45)" class="ring-progress"/>
+            </svg>
+            <div class="ring-label">100</div>
+            <div class="category-icon">🔗</div>
+            <div class="category-name">Broken Links</div>
+        </div>
+        <div class="category-card" onclick="scrollToSection('internal_links')">
+            <svg class="ring" viewBox="0 0 90 90">
+                <circle cx="45" cy="45" r="40" fill="none" stroke="var(--card-border)" stroke-width="6"/>
+                <circle cx="45" cy="45" r="40" fill="none" stroke="#22c55e" stroke-width="6"
+                    stroke-dasharray="251.3 251.327" stroke-linecap="round"
+                    transform="rotate(-90 45 45)" class="ring-progress"/>
+            </svg>
+            <div class="ring-label">100</div>
+            <div class="category-icon">🕸️</div>
+            <div class="category-name">Internal Links</div>
+        </div>
+        <div class="category-card" onclick="scrollToSection('redirects')">
+            <svg class="ring" viewBox="0 0 90 90">
+                <circle cx="45" cy="45" r="40" fill="none" stroke="var(--card-border)" stroke-width="6"/>
+                <circle cx="45" cy="45" r="40" fill="none" stroke="#22c55e" stroke-width="6"
+                    stroke-dasharray="251.3 251.327" stroke-linecap="round"
+                    transform="rotate(-90 45 45)" class="ring-progress"/>
+            </svg>
+            <div class="ring-label">100</div>
+            <div class="category-icon">↪️</div>
+            <div class="category-name">Redirects</div>
+        </div>
+        <div class="category-card" onclick="scrollToSection('llms_txt')">
+            <svg class="ring" viewBox="0 0 90 90">
+                <circle cx="45" cy="45" r="40" fill="none" stroke="var(--card-border)" stroke-width="6"/>
+                <circle cx="45" cy="45" r="40" fill="none" stroke="#ef4444" stroke-width="6"
+                    stroke-dasharray="0.0 251.327" stroke-linecap="round"
+                    transform="rotate(-90 45 45)" class="ring-progress"/>
+            </svg>
+            <div class="ring-label">0</div>
+            <div class="category-icon">🧠</div>
+            <div class="category-name">AI Search (llms.txt)</div>
+        </div>
+        <div class="category-card" onclick="scrollToSection('pagespeed')">
+            <svg class="ring" viewBox="0 0 90 90">
+                <circle cx="45" cy="45" r="40" fill="none" stroke="var(--card-border)" stroke-width="6"/>
+                <circle cx="45" cy="45" r="40" fill="none" stroke="#ef4444" stroke-width="6"
+                    stroke-dasharray="0.0 251.327" stroke-linecap="round"
+                    transform="rotate(-90 45 45)" class="ring-progress"/>
+            </svg>
+            <div class="ring-label">0</div>
+            <div class="category-icon">⚡</div>
+            <div class="category-name">Performance (CWV)</div>
+        </div>
+        <div class="category-card" onclick="scrollToSection('onpage')">
+            <svg class="ring" viewBox="0 0 90 90">
+                <circle cx="45" cy="45" r="40" fill="none" stroke="var(--card-border)" stroke-width="6"/>
+                <circle cx="45" cy="45" r="40" fill="none" stroke="#ef4444" stroke-width="6"
+                    stroke-dasharray="0.0 251.327" stroke-linecap="round"
+                    transform="rotate(-90 45 45)" class="ring-progress"/>
+            </svg>
+            <div class="ring-label">0</div>
+            <div class="category-icon">📝</div>
+            <div class="category-name">On-Page SEO</div>
+        </div>
+        <div class="category-card" onclick="scrollToSection('readability')">
+            <svg class="ring" viewBox="0 0 90 90">
+                <circle cx="45" cy="45" r="40" fill="none" stroke="var(--card-border)" stroke-width="6"/>
+                <circle cx="45" cy="45" r="40" fill="none" stroke="#22c55e" stroke-width="6"
+                    stroke-dasharray="251.3 251.327" stroke-linecap="round"
+                    transform="rotate(-90 45 45)" class="ring-progress"/>
+            </svg>
+            <div class="ring-label">100</div>
+            <div class="category-icon">📖</div>
+            <div class="category-name">Readability</div>
+        </div>
+        <div class="category-card" onclick="scrollToSection('article')">
+            <svg class="ring" viewBox="0 0 90 90">
+                <circle cx="45" cy="45" r="40" fill="none" stroke="var(--card-border)" stroke-width="6"/>
+                <circle cx="45" cy="45" r="40" fill="none" stroke="#ef4444" stroke-width="6"
+                    stroke-dasharray="0.0 251.327" stroke-linecap="round"
+                    transform="rotate(-90 45 45)" class="ring-progress"/>
+            </svg>
+            <div class="ring-label">0</div>
+            <div class="category-icon">📄</div>
+            <div class="category-name">Article Extractor</div>
+        </div>
+        <div class="category-card" onclick="scrollToSection('entity')">
+            <svg class="ring" viewBox="0 0 90 90">
+                <circle cx="45" cy="45" r="40" fill="none" stroke="var(--card-border)" stroke-width="6"/>
+                <circle cx="45" cy="45" r="40" fill="none" stroke="#ef4444" stroke-width="6"
+                    stroke-dasharray="0.0 251.327" stroke-linecap="round"
+                    transform="rotate(-90 45 45)" class="ring-progress"/>
+            </svg>
+            <div class="ring-label">0</div>
+            <div class="category-icon">🏛️</div>
+            <div class="category-name">Entity SEO</div>
+        </div>
+        <div class="category-card" onclick="scrollToSection('link_profile')">
+            <svg class="ring" viewBox="0 0 90 90">
+                <circle cx="45" cy="45" r="40" fill="none" stroke="var(--card-border)" stroke-width="6"/>
+                <circle cx="45" cy="45" r="40" fill="none" stroke="#ef4444" stroke-width="6"
+                    stroke-dasharray="0.0 251.327" stroke-linecap="round"
+                    transform="rotate(-90 45 45)" class="ring-progress"/>
+            </svg>
+            <div class="ring-label">0</div>
+            <div class="category-icon">🔗</div>
+            <div class="category-name">Link Profile</div>
+        </div>
+        <div class="category-card" onclick="scrollToSection('hreflang')">
+            <svg class="ring" viewBox="0 0 90 90">
+                <circle cx="45" cy="45" r="40" fill="none" stroke="var(--card-border)" stroke-width="6"/>
+                <circle cx="45" cy="45" r="40" fill="none" stroke="#ef4444" stroke-width="6"
+                    stroke-dasharray="0.0 251.327" stroke-linecap="round"
+                    transform="rotate(-90 45 45)" class="ring-progress"/>
+            </svg>
+            <div class="ring-label">0</div>
+            <div class="category-icon">🌍</div>
+            <div class="category-name">Hreflang</div>
+        </div>
+        <div class="category-card" onclick="scrollToSection('duplicate_content')">
+            <svg class="ring" viewBox="0 0 90 90">
+                <circle cx="45" cy="45" r="40" fill="none" stroke="var(--card-border)" stroke-width="6"/>
+                <circle cx="45" cy="45" r="40" fill="none" stroke="#ef4444" stroke-width="6"
+                    stroke-dasharray="0.0 251.327" stroke-linecap="round"
+                    transform="rotate(-90 45 45)" class="ring-progress"/>
+            </svg>
+            <div class="ring-label">0</div>
+            <div class="category-icon">📋</div>
+            <div class="category-name">Content Uniqueness</div>
+        </div>
+    </div>
+
+    <!-- Environment Detection -->
+    <div class="section" id="section-environment">
+        <div class="section-header" onclick="toggleSection('environment')">
+            <h2>🧭 Environment Detection (LLM-Inferred)</h2>
+            <span class="chevron" id="chevron-environment">▼</span>
+        </div>
+        <div class="section-body" id="body-environment">
+            <div class="summary-row">
+                <div class="summary-item"><div class="val">WordPress</div><div class="lbl">Primary Platform</div></div>
+                <div class="summary-item"><div class="val">Managed CMS</div><div class="lbl">Runtime Type</div></div>
+                <div class="summary-item"><div class="val">HIGH</div><div class="lbl">Confidence</div></div>
+                <div class="summary-item"><div class="val">2</div><div class="lbl">Matched Signals</div></div>
+            </div>
+            <h3 style="margin: 16px 0 8px; font-size: 0.95rem;">Detection Signals</h3>
+            <ul style="padding-left:20px;"><li class="mono" style="margin:4px 0;">WordPress core paths detected</li><li class="mono" style="margin:4px 0;">WordPress generator meta detected</li></ul>
+            
+        </div>
+    </div>
+
+    <!-- Environment-specific Fix Plan -->
+    <div class="section" id="section-env_fixes">
+        <div class="section-header" onclick="toggleSection('env_fixes')">
+            <h2>🛠️ Environment-Specific Fix Plan</h2>
+            <span class="chevron" id="chevron-env_fixes">▼</span>
+        </div>
+        <div class="section-body" id="body-env_fixes">
+            <div class="issue-item critical"><span class="issue-badge">CRITICAL</span><div><strong>Missing H1 on page</strong><br><span style="color:var(--text-muted)">No primary content heading was detected, which weakens topical clarity.</span><br><span><strong>Fix:</strong> Ensure one H1 in theme templates and avoid duplicate H1 in builders/widgets.</span></div></div><div class="issue-item critical"><span class="issue-badge">CRITICAL</span><div><strong>6 security headers missing</strong><br><span style="color:var(--text-muted)">Missing headers reduce trust and can expose the site to browser/security risks.</span><br><span><strong>Fix:</strong> Set headers via server config (Nginx/Apache) or CDN edge rules.</span></div></div><div class="issue-item warning"><span class="issue-badge">WARNING</span><div><strong>Meta description is missing or out of range</strong><br><span style="color:var(--text-muted)">This can reduce SERP CTR and snippet quality.</span><br><span><strong>Fix:</strong> Use your SEO plugin (Yoast/RankMath/AIOSEO) or theme templates to set title/meta and OG/Twitter tags.</span></div></div><div class="issue-item warning"><span class="issue-badge">WARNING</span><div><strong>Title tag needs optimization</strong><br><span style="color:var(--text-muted)">Title length/content is likely suboptimal for rankings and click-through.</span><br><span><strong>Fix:</strong> Use your SEO plugin (Yoast/RankMath/AIOSEO) or theme templates to set title/meta and OG/Twitter tags.</span></div></div><div class="issue-item warning"><span class="issue-badge">WARNING</span><div><strong>No llms.txt found</strong><br><span style="color:var(--text-muted)">AI crawlers and assistants have no curated machine-readable guidance for key pages.</span><br><span><strong>Fix:</strong> Create /llms.txt at web root or route it through your web server.</span></div></div><div class="issue-item warning"><span class="issue-badge">WARNING</span><div><strong>Content readability is difficult</strong><br><span style="color:var(--text-muted)">Long, complex text can reduce engagement and comprehension.</span><br><span><strong>Fix:</strong> Rewrite key sections with shorter sentences (15-20 words), shorter paragraphs (2-4 sentences), and clearer subheadings.</span></div></div><div class="issue-item info"><span class="issue-badge">INFO</span><div><strong>Performance measurement incomplete</strong><br><span style="color:var(--text-muted)">PageSpeed API returned an error, so CWV recommendations are less reliable.</span><br><span><strong>Fix:</strong> Set `PAGESPEED_API_KEY` in your environment or `.env` file (see `.env.example`), then rerun. The CLI also accepts `--api-key`. Prioritize LCP/INP/CLS fixes from that output.</span></div></div>
+        </div>
+    </div>
+
+    <!-- Issues Summary -->
+    <div class="section" id="section-issues">
+        <div class="section-header" onclick="toggleSection('issues')">
+            <h2>🚨 All Issues (4)</h2>
+            <span class="chevron" id="chevron-issues">▼</span>
+        </div>
+        <div class="section-body" id="body-issues">
+            <div class="issue-item critical"><span class="issue-badge">CRITICAL</span> 🔴 6 security headers missing — poor security posture</div>
+<div class="issue-item warning"><span class="issue-badge">WARNING</span> ⚠️ 11 AI crawlers not explicitly managed: GPTBot, ChatGPT-User, ClaudeBot, PerplexityBot, Google-Extended</div>
+<div class="issue-item warning"><span class="issue-badge">WARNING</span> ⚠️ Average sentence length (37.8 words) is too long — target 15-20</div>
+<div class="issue-item warning"><span class="issue-badge">WARNING</span> ⚠️ Thin content (151 words) — may rank poorly</div>
+
+        </div>
+    </div>
+
+    <!-- Security Headers -->
+    <div class="section" id="section-security">
+        <div class="section-header" onclick="toggleSection('security')">
+            <h2>🔒 Security Headers <span class="badge critical">25/100</span></h2>
+            <span class="chevron" id="chevron-security">▼</span>
+        </div>
+        <div class="section-body" id="body-security">
+            <div class="summary-row">
+                <div class="summary-item"><div class="val">✅</div><div class="lbl">HTTPS</div></div>
+                <div class="summary-item"><div class="val">0</div><div class="lbl">Present</div></div>
+                <div class="summary-item"><div class="val">6</div><div class="lbl">Missing</div></div>
+            </div>
+            <table>
+                <thead><tr><th>Header</th><th>Status</th><th>Value / Description</th></tr></thead>
+                <tbody><tr><td>HSTS (Strict-Transport-Security)</td><td><span class="badge critical">Missing</span></td><td>Forces browsers to use HTTPS. Prevents downgrade attacks.</td></tr><tr><td>Content-Security-Policy (CSP)</td><td><span class="badge critical">Missing</span></td><td>Prevents XSS, clickjacking, and code injection.</td></tr><tr><td>X-Frame-Options</td><td><span class="badge critical">Missing</span></td><td>Prevents clickjacking by controlling iframe embedding.</td></tr><tr><td>X-Content-Type-Options</td><td><span class="badge critical">Missing</span></td><td>Prevents MIME-type sniffing.</td></tr><tr><td>Referrer-Policy</td><td><span class="badge critical">Missing</span></td><td>Controls how much referrer info is shared.</td></tr><tr><td>Permissions-Policy</td><td><span class="badge critical">Missing</span></td><td>Controls browser feature access (camera, microphone, geolocation).</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Social Meta -->
+    <div class="section" id="section-social">
+        <div class="section-header" onclick="toggleSection('social')">
+            <h2>📱 Social Meta Tags <span class="badge critical">0/100</span></h2>
+            <span class="chevron" id="chevron-social">▼</span>
+        </div>
+        <div class="section-body" id="body-social">
+            <table>
+                <thead><tr><th>Tag</th><th>Status</th><th>Value</th></tr></thead>
+                <tbody><tr><td>og:title</td><td><span class="badge critical">Missing</span></td><td>—</td></tr><tr><td>og:description</td><td><span class="badge critical">Missing</span></td><td>—</td></tr><tr><td>og:image</td><td><span class="badge critical">Missing</span></td><td>—</td></tr><tr><td>og:url</td><td><span class="badge critical">Missing</span></td><td>—</td></tr><tr><td>og:type</td><td><span class="badge critical">Missing</span></td><td>—</td></tr><tr><td>og:site_name</td><td><span class="badge critical">Missing</span></td><td>—</td></tr><tr><td>twitter:card</td><td><span class="badge warning">Missing</span></td><td>—</td></tr><tr><td>twitter:title</td><td><span class="badge warning">Missing</span></td><td>—</td></tr><tr><td>twitter:description</td><td><span class="badge warning">Missing</span></td><td>—</td></tr><tr><td>twitter:image</td><td><span class="badge warning">Missing</span></td><td>—</td></tr><tr><td>twitter:site</td><td><span class="badge warning">Missing</span></td><td>—</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- AI Crawlers -->
+    <div class="section" id="section-robots">
+        <div class="section-header" onclick="toggleSection('robots')">
+            <h2>🤖 Robots & AI Crawlers <span class="badge pass">80/100</span></h2>
+            <span class="chevron" id="chevron-robots">▼</span>
+        </div>
+        <div class="section-body" id="body-robots">
+            <div class="summary-row">
+                <div class="summary-item"><div class="val">200</div><div class="lbl">robots.txt</div></div>
+                <div class="summary-item"><div class="val">1</div><div class="lbl">Sitemaps</div></div>
+                <div class="summary-item"><div class="val">1</div><div class="lbl">User-Agents</div></div>
+            </div>
+            <h3 style="margin: 16px 0 8px; font-size: 0.95rem;">AI Crawler Management</h3>
+            <table>
+                <thead><tr><th>Crawler</th><th>Status</th><th>Details</th></tr></thead>
+                <tbody><tr><td>GPTBot</td><td><span class="badge warning">Unmanaged</span></td><td>not managed (inherits * rules)</td></tr><tr><td>ChatGPT-User</td><td><span class="badge warning">Unmanaged</span></td><td>not managed (inherits * rules)</td></tr><tr><td>ClaudeBot</td><td><span class="badge warning">Unmanaged</span></td><td>not managed (inherits * rules)</td></tr><tr><td>PerplexityBot</td><td><span class="badge warning">Unmanaged</span></td><td>not managed (inherits * rules)</td></tr><tr><td>Google-Extended</td><td><span class="badge warning">Unmanaged</span></td><td>not managed (inherits * rules)</td></tr><tr><td>Applebot-Extended</td><td><span class="badge warning">Unmanaged</span></td><td>not managed (inherits * rules)</td></tr><tr><td>Bytespider</td><td><span class="badge warning">Unmanaged</span></td><td>not managed (inherits * rules)</td></tr><tr><td>CCBot</td><td><span class="badge warning">Unmanaged</span></td><td>not managed (inherits * rules)</td></tr><tr><td>anthropic-ai</td><td><span class="badge warning">Unmanaged</span></td><td>not managed (inherits * rules)</td></tr><tr><td>FacebookBot</td><td><span class="badge warning">Unmanaged</span></td><td>not managed (inherits * rules)</td></tr><tr><td>Amazonbot</td><td><span class="badge warning">Unmanaged</span></td><td>not managed (inherits * rules)</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Broken Links -->
+    <div class="section" id="section-broken_links">
+        <div class="section-header" onclick="toggleSection('broken_links')">
+            <h2>🔗 Broken Links <span class="badge pass">0 broken / 0 total</span></h2>
+            <span class="chevron" id="chevron-broken_links">▼</span>
+        </div>
+        <div class="section-body" id="body-broken_links">
+            <div class="summary-row">
+                <div class="summary-item"><div class="val" style="color:var(--green)">0</div><div class="lbl">Healthy</div></div>
+                <div class="summary-item"><div class="val" style="color:var(--red)">0</div><div class="lbl">Broken</div></div>
+                <div class="summary-item"><div class="val" style="color:var(--yellow)">0</div><div class="lbl">Redirected</div></div>
+                <div class="summary-item"><div class="val" style="color:var(--orange)">0</div><div class="lbl">Timeout</div></div>
+            </div>
+            <p style="color:var(--green);margin-top:12px">✅ No broken links found</p>
+        </div>
+    </div>
+
+    <!-- Internal Links -->
+    <div class="section" id="section-internal_links">
+        <div class="section-header" onclick="toggleSection('internal_links')">
+            <h2>🕸️ Internal Link Structure <span class="badge pass">100/100</span></h2>
+            <span class="chevron" id="chevron-internal_links">▼</span>
+        </div>
+        <div class="section-body" id="body-internal_links">
+            <div class="summary-row">
+                <div class="summary-item"><div class="val">0</div><div class="lbl">Pages Crawled</div></div>
+                <div class="summary-item"><div class="val">0</div><div class="lbl">Internal Links</div></div>
+                <div class="summary-item"><div class="val">0</div><div class="lbl">Avg Links/Page</div></div>
+                <div class="summary-item"><div class="val">0</div><div class="lbl">Orphan Pages</div></div>
+            </div>
+            
+            
+        </div>
+    </div>
+
+    <!-- Redirects -->
+    <div class="section" id="section-redirects">
+        <div class="section-header" onclick="toggleSection('redirects')">
+            <h2>↪️ Redirect Chain <span class="badge pass">0 hops</span></h2>
+            <span class="chevron" id="chevron-redirects">▼</span>
+        </div>
+        <div class="section-body" id="body-redirects">
+            <p style="color:var(--green)">✅ No redirects — direct access</p>
+        </div>
+    </div>
+
+    <!-- llms.txt -->
+    <div class="section" id="section-llms_txt">
+        <div class="section-header" onclick="toggleSection('llms_txt')">
+            <h2>🧠 AI Search Readiness (llms.txt) <span class="badge critical">Not Found</span></h2>
+            <span class="chevron" id="chevron-llms_txt">▼</span>
+        </div>
+        <div class="section-body" id="body-llms_txt">
+            <div class="summary-row">
+                <div class="summary-item"><div class="val">❌</div><div class="lbl">llms.txt</div></div>
+                <div class="summary-item"><div class="val">❌</div><div class="lbl">llms-full.txt</div></div>
+                <div class="summary-item"><div class="val">0</div><div class="lbl">Quality Score</div></div>
+            </div>
+            <div class="issue-item warning"><span class="issue-badge">TIP</span> Create /llms.txt with site name, description, and key page links</div>
+        </div>
+    </div>
+
+    <!-- PageSpeed / Core Web Vitals -->
+    <div class="section" id="section-pagespeed">
+        <div class="section-header" onclick="toggleSection('pagespeed')">
+            <h2>⚡ Performance & Core Web Vitals <span class="badge critical">0/100</span></h2>
+            <span class="chevron" id="chevron-pagespeed">▼</span>
+        </div>
+        <div class="section-body" id="body-pagespeed"><div class="psi-key-box" id="performance-credentials"><label for="psi-api-key">🔑 Google PageSpeed Insights API Key</label><input id="psi-api-key" type="password" autocomplete="off" spellcheck="false" placeholder="AIza... یا JSON دارای key"><small>برای بررسی Performance، کلید API را اینجا وارد کنید و دکمه بررسی مجدد را بزنید. فایل JSON حساب سرویس پشتیبانی نمی‌شود. کلید ذخیره نمی‌شود.</small><button type="button" class="section-audit-btn" onclick="document.getElementById('kapris-refresh').click()">🔄 بررسی مجدد با کلید واردشده</button><div class="psi-guide psi-guide-en" id="psi-key-guide-en"><h3>How to create a Google PageSpeed API key</h3><ol><li>Open <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer">Google Cloud Console</a> and sign in.</li><li>Create a new project or select an existing project.</li><li>Go to APIs &amp; Services → Library, search for PageSpeed Insights API, and enable it.</li><li>Go to APIs &amp; Services → Credentials and select Create credentials → API key.</li><li>Paste the new key into the field above, then run the audit again.</li><li>Restrict the key to PageSpeed Insights API and use application restrictions appropriate for local software.</li></ol><p class="warning">Keep your API key private. Service-account JSON files are not supported. A valid key does not guarantee that Google will allow every request.</p></div><div class="psi-guide" id="psi-key-guide"><h3>📘 راهنمای ساخت کلید Google PageSpeed Insights</h3><ol><li>به <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer">Google Cloud Console</a> بروید و وارد حساب گوگل شوید.</li><li>از بالای صفحه یک <strong>Project</strong> جدید بسازید یا پروژه موجود را انتخاب کنید.</li><li>در بخش <strong>APIs &amp; Services → Library</strong> عبارت <strong>PageSpeed Insights API</strong> را جست‌وجو و روی <strong>Enable</strong> کلیک کنید.</li><li>در <strong>APIs &amp; Services → Credentials</strong> گزینه <strong>Create credentials → API key</strong> را انتخاب کنید.</li><li>کلید ایجادشده را کپی کنید و در کادر بالا قرار دهید؛ سپس روی «بررسی مجدد» بزنید.</li><li>برای امنیت، در بخش <strong>Restrict key</strong> دسترسی کلید را فقط به <strong>PageSpeed Insights API</strong> محدود کنید. محدودیت برنامه را متناسب با اجرای محلی برنامه تنظیم کنید.</li></ol><p class="warning">🔐 کلید API را عمومی منتشر نکنید. فایل JSON مربوط به Service Account برای این قسمت مناسب نیست. خطای 403 ممکن است حتی با کلید معتبر، به‌دلیل تنظیمات دسترسی یا محدودیت گوگل رخ دهد.</p></div></div>
+            <div class="summary-row">
+                <div class="summary-item"><div class="val">None</div><div class="lbl">Performance</div></div>
+                <div class="summary-item"><div class="val">?</div><div class="lbl">LCP</div></div>
+                <div class="summary-item"><div class="val">?</div><div class="lbl">INP/TBT</div></div>
+                <div class="summary-item"><div class="val">?</div><div class="lbl">CLS</div></div>
+            </div>
+            <div class="issue-item warning"><span class="issue-badge">NOTE</span> <div><strong>PageSpeed API returned an error or was rate-limited.</strong><br><span style="color:var(--text-muted)">Set <code>PAGESPEED_API_KEY</code> in a <code>.env</code> file (see <code>.env.example</code>) or export it in your shell, then rerun. The CLI also accepts <code>--api-key</code>. The LLM can still analyze Core Web Vitals by reading the page directly.</span></div></div>
+            
+        </div>
+    </div>
+
+    <!-- On-Page SEO -->
+    <div class="section" id="section-onpage">
+        <div class="section-header" onclick="toggleSection('onpage')">
+            <h2>📝 On-Page SEO <span class="badge critical">0/100</span></h2>
+            <span class="chevron" id="chevron-onpage">▼</span>
+        </div>
+        <div class="section-body" id="body-onpage">
+            <div class="summary-row">
+                <div class="summary-item"><div class="val">❌</div><div class="lbl">Title Tag</div></div>
+                <div class="summary-item"><div class="val">❌</div><div class="lbl">Meta Desc</div></div>
+                <div class="summary-item"><div class="val">❌</div><div class="lbl">H1</div></div>
+                <div class="summary-item"><div class="val">❌</div><div class="lbl">Canonical</div></div>
+            </div>
+            <table>
+                <thead><tr><th>Element</th><th>Value</th><th>Length</th></tr></thead>
+                <tbody>
+                    <tr><td>Title</td><td>—</td><td>0</td></tr>
+                    <tr><td>Meta Description</td><td>—</td><td>0</td></tr>
+                    <tr><td>H1</td><td>—</td><td>—</td></tr>
+                    <tr><td>Canonical</td><td class="link-url">—</td><td>—</td></tr>
+                </tbody>
+            </table>
+            
+        </div>
+    </div>
+
+    <!-- Readability -->
+    <div class="section" id="section-readability">
+        <div class="section-header" onclick="toggleSection('readability')">
+            <h2>📖 Readability <span class="badge pass">100/100</span></h2>
+            <span class="chevron" id="chevron-readability">▼</span>
+        </div>
+        <div class="section-body" id="body-readability">
+            <div class="summary-row">
+                <div class="summary-item"><div class="val">75.5</div><div class="lbl">Flesch Score</div></div>
+                <div class="summary-item"><div class="val">12.1</div><div class="lbl">Grade Level</div></div>
+                <div class="summary-item"><div class="val">151</div><div class="lbl">Words</div></div>
+                <div class="summary-item"><div class="val">0.8 min</div><div class="lbl">Read Time</div></div>
+            </div>
+            <div style="margin-top:16px"><h3 style="font-size:0.95rem;margin-bottom:8px;">💡 Recommendations</h3><div class="issue-item info"><span class="issue-badge">FIX</span> Break long sentences into shorter ones for better readability</div><div class="issue-item info"><span class="issue-badge">FIX</span> Rewrite the flagged long sentences below using the suggested replacements.</div><div class="issue-item info"><span class="issue-badge">FIX</span> ⚠️ Average sentence length (37.8 words) is too long — target 15-20</div><div class="issue-item info"><span class="issue-badge">FIX</span> ⚠️ Thin content (151 words) — may rank poorly</div></div>
+            <div style="margin-top:16px"><h3 style="font-size:0.95rem;margin-bottom:8px;">✍️ What To Replace (Before/After)</h3><div class="issue-item warning"><span class="issue-badge">SENTENCE (template)</span><div><div><strong>Current:</strong> Homepage hero intro block is broad and hard to scan.</div><div style="margin-top:6px;"><strong>Replace with:</strong> Use a 2-3 sentence hero: who you help, what users can do here, and where to start. Example: &quot;Learn practical ethical hacking with step-by-step guides. Start with Wi-Fi security, Active Directory, or malware analysis using the tracks below.&quot;</div></div></div><div class="issue-item warning"><span class="issue-badge">SENTENCE (template)</span><div><div><strong>Current:</strong> Section descriptions mix too many topics in one long paragraph.</div><div style="margin-top:6px;"><strong>Replace with:</strong> Replace with short blurbs per section (1 sentence each) and add a clear CTA link: &quot;Start Wi-Fi Security&quot;, &quot;Explore AD Attack Paths&quot;, &quot;View Red-Team Cheat Sheets&quot;.</div></div></div></div>
+        </div>
+    </div>
+
+    <!-- Article SEO Extractor -->
+    <div class="section" id="section-article">
+        <div class="section-header" onclick="toggleSection('article')">
+            <h2>📄 Article Info & Keywords <span class="badge critical">0/100</span></h2>
+            <span class="chevron" id="chevron-article">▼</span>
+        </div>
+        <div class="section-body" id="body-article">
+            <div class="summary-row">
+                <div class="summary-item"><div class="val">?</div><div class="lbl">Words</div></div>
+                <div class="summary-item"><div class="val">0</div><div class="lbl">H2 Headings</div></div>
+                <div class="summary-item"><div class="val">0</div><div class="lbl">Images</div></div>
+            </div>
+            <h3 style="margin: 16px 0 8px; font-size: 0.95rem;">Extracted Keywords</h3>
+            <table>
+                <thead><tr><th>Target Keyword</th><th>LSI / Related Keywords</th></tr></thead>
+                <tbody>
+                    <tr>
+                        <td style="font-weight: 600; color: var(--accent);">—</td>
+                        <td>—</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+        </div>
+    </div>
+
+    <!-- Entity SEO -->
+    <div class="section" id="section-entity">
+        <div class="section-header" onclick="toggleSection('entity')">
+            <h2>🏛️ Entity SEO <span class="badge critical">0/100</span></h2>
+            <span class="chevron" id="chevron-entity">▼</span>
+        </div>
+        <div class="section-body" id="body-entity">
+            <div class="summary-row">
+                <div class="summary-item"><div class="val">❌</div><div class="lbl">Wikidata</div></div>
+                <div class="summary-item"><div class="val">❌</div><div class="lbl">Wikipedia</div></div>
+                <div class="summary-item"><div class="val">0</div><div class="lbl">sameAs Links</div></div>
+                <div class="summary-item"><div class="val">0</div><div class="lbl">Issues</div></div>
+            </div>
+            
+        </div>
+    </div>
+
+    <!-- Link Profile -->
+    <div class="section" id="section-link_profile">
+        <div class="section-header" onclick="toggleSection('link_profile')">
+            <h2>🔗 Link Profile <span class="badge critical">0/100</span></h2>
+            <span class="chevron" id="chevron-link_profile">▼</span>
+        </div>
+        <div class="section-body" id="body-link_profile">
+            <div class="summary-row">
+                <div class="summary-item"><div class="val">?</div><div class="lbl">Pages Crawled</div></div>
+                <div class="summary-item"><div class="val">?</div><div class="lbl">Avg Links/Page</div></div>
+                <div class="summary-item"><div class="val">0</div><div class="lbl">Orphan Pages</div></div>
+                <div class="summary-item"><div class="val">0</div><div class="lbl">Dead Ends</div></div>
+            </div>
+            
+        </div>
+    </div>
+
+    <!-- Hreflang -->
+    <div class="section" id="section-hreflang">
+        <div class="section-header" onclick="toggleSection('hreflang')">
+            <h2>🌍 Hreflang / International SEO <span class="badge info">0 tags</span></h2>
+            <span class="chevron" id="chevron-hreflang">▼</span>
+        </div>
+        <div class="section-body" id="body-hreflang">
+            <div class="summary-row">
+                <div class="summary-item"><div class="val">none</div><div class="lbl">Method</div></div>
+                <div class="summary-item"><div class="val">0</div><div class="lbl">Tags Found</div></div>
+            </div>
+            <p style="color:var(--text-muted);margin-top:12px">No hreflang tags found — this is expected for single-language sites.</p>
+        </div>
+    </div>
+
+    <!-- Duplicate Content -->
+    <div class="section" id="section-duplicate_content">
+        <div class="section-header" onclick="toggleSection('duplicate_content')">
+            <h2>📋 Content Uniqueness <span class="badge pass">0 dupes / 0 thin</span></h2>
+            <span class="chevron" id="chevron-duplicate_content">▼</span>
+        </div>
+        <div class="section-body" id="body-duplicate_content">
+            <div class="summary-row">
+                <div class="summary-item"><div class="val">?</div><div class="lbl">Pages Analyzed</div></div>
+                <div class="summary-item"><div class="val">0</div><div class="lbl">Near Duplicates</div></div>
+                <div class="summary-item"><div class="val">0</div><div class="lbl">Thin Pages</div></div>
+            </div>
+            
+        </div>
+    </div>
+
+    <!-- Recommendations Summary -->
+    <div class="section" id="section-recs">
+        <div class="section-header" onclick="toggleSection('recs')">
+            <h2>💡 All Recommendations</h2>
+            <span class="chevron" id="chevron-recs">▼</span>
+        </div>
+        <div class="section-body" id="body-recs">
+            <h3 style="font-size:0.95rem;margin:16px 0 8px;">🛠️ Environment-Specific Fixes</h3><div class="issue-item info"><span class="issue-badge">FIX</span> <strong>Missing H1 on page</strong>: Ensure one H1 in theme templates and avoid duplicate H1 in builders/widgets.</div><div class="issue-item info"><span class="issue-badge">FIX</span> <strong>Meta description is missing or out of range</strong>: Use your SEO plugin (Yoast/RankMath/AIOSEO) or theme templates to set title/meta and OG/Twitter tags.</div><div class="issue-item info"><span class="issue-badge">FIX</span> <strong>Title tag needs optimization</strong>: Use your SEO plugin (Yoast/RankMath/AIOSEO) or theme templates to set title/meta and OG/Twitter tags.</div><div class="issue-item info"><span class="issue-badge">FIX</span> <strong>6 security headers missing</strong>: Set headers via server config (Nginx/Apache) or CDN edge rules.</div><div class="issue-item info"><span class="issue-badge">FIX</span> <strong>No llms.txt found</strong>: Create /llms.txt at web root or route it through your web server.</div><div class="issue-item info"><span class="issue-badge">FIX</span> <strong>Performance measurement incomplete</strong>: Set `PAGESPEED_API_KEY` in your environment or `.env` file (see `.env.example`), then rerun. The CLI also accepts `--api-key`. Prioritize LCP/INP/CLS fixes from that output.</div><div class="issue-item info"><span class="issue-badge">FIX</span> <strong>Content readability is difficult</strong>: Rewrite key sections with shorter sentences (15-20 words), shorter paragraphs (2-4 sentences), and clearer subheadings.</div><h3 style="font-size:0.95rem;margin:16px 0 8px;">🔒 Security</h3><div class="issue-item info"><span class="issue-badge">FIX</span> HSTS (Strict-Transport-Security): Add header: Strict-Transport-Security: max-age=31536000; includeSubDomains</div><div class="issue-item info"><span class="issue-badge">FIX</span> Content-Security-Policy (CSP): Add a Content-Security-Policy header restricting script/style sources.</div><div class="issue-item info"><span class="issue-badge">FIX</span> X-Frame-Options: Add header: X-Frame-Options: SAMEORIGIN</div><div class="issue-item info"><span class="issue-badge">FIX</span> X-Content-Type-Options: Add header: X-Content-Type-Options: nosniff</div><div class="issue-item info"><span class="issue-badge">FIX</span> Referrer-Policy: Add header: Referrer-Policy: strict-origin-when-cross-origin</div><div class="issue-item info"><span class="issue-badge">FIX</span> Permissions-Policy: Add header: Permissions-Policy: camera=(), microphone=(), geolocation=()</div><h3 style="font-size:0.95rem;margin:16px 0 8px;">📖 Readability</h3><div class="issue-item info"><span class="issue-badge">FIX</span> Break long sentences into shorter ones for better readability</div><div class="issue-item info"><span class="issue-badge">FIX</span> Rewrite the flagged long sentences below using the suggested replacements.</div><div class="issue-item info"><span class="issue-badge">FIX</span> ⚠️ Average sentence length (37.8 words) is too long — target 15-20</div><div class="issue-item info"><span class="issue-badge">FIX</span> ⚠️ Thin content (151 words) — may rank poorly</div><div class="issue-item info"><span class="issue-badge">FIX</span> Rewrite: Homepage hero intro block is broad and hard to scan. → Use a 2-3 sentence hero: who you help, what users can do here, and where to start. Example: &quot;Learn practical ethical hacking with step-by-step guides. Start with Wi-Fi security, Ac</div><div class="issue-item info"><span class="issue-badge">FIX</span> Rewrite: Section descriptions mix too many topics in one long paragraph. → Replace with short blurbs per section (1 sentence each) and add a clear CTA link: &quot;Start Wi-Fi Security&quot;, &quot;Explore AD Attack Paths&quot;, &quot;View Red-Team Cheat Sheets&quot;.</div>
+        </div>
+    </div>
+
+</div>
+
+<div class="footer">
+    <p>crested by Amir.exe · <span id="report-date">—</span></p>
+</div>
+
+<script>
+function toggleSection(id) {
+    const body = document.getElementById('body-' + id);
+    const chevron = document.getElementById('chevron-' + id);
+    body.classList.toggle('open');
+    chevron.classList.toggle('open');
+}
+function scrollToSection(id) {
+    const el = document.getElementById('section-' + id);
+    if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Auto-open
+        const body = document.getElementById('body-' + id);
+        const chevron = document.getElementById('chevron-' + id);
+        if (!body.classList.contains('open')) {
+            body.classList.add('open');
+            chevron.classList.add('open');
+        }
+    }
+}
+function toggleTheme() {
+    const html = document.documentElement;
+    const btn = document.querySelector('.theme-toggle');
+    if (html.getAttribute('data-theme') === 'light') {
+        html.removeAttribute('data-theme');
+        btn.textContent = '🌙';
+    } else {
+        html.setAttribute('data-theme', 'light');
+        btn.textContent = '☀️';
+    }
+}
+// Auto-open issues section
+document.getElementById('body-issues').classList.add('open');
+document.getElementById('chevron-issues').classList.add('open');
+</script>
+
+<script id="kapris-i18n-script">
+(function(){
+'use strict';
+const dict = {"crested by Amir.exe ·":"crested by Amir.exe ·", "🔄 SEO Audit Studio":"🔄 تحلیل سئوی سایت", "Website URL":"آدرس سایت", "🔑 Google PageSpeed Insights API Key":"🔑 کلید API گوگل پیج‌اسپید", "Review the selected URL and explore live results in the cards below.":"آدرس صفحه را وارد کنید و نتیجه بررسی را در کارت‌های پایین ببینید.","SEO Report — kaprisshop.co": "گزارش سئو — کاپریس", "SEO Analysis Report": "گزارش تحلیل سئو", "منتظر بررسی سایت": "منتظر بررسی سایت", "🔄 SEO Audit Studio": "🔄 تحلیل سئوی سایت", "Website URL":"آدرس سایت", "🔑 Google PageSpeed Insights API Key":"🔑 کلید API گوگل پیج‌اسپید", "Review the selected URL and explore live results in the cards below.": "آدرس صفحه را وارد کنید و نتیجه بررسی را در کارت‌های پایین ببینید.", "Run New Audit": "اجرای بررسی جدید", "Checking audit status…": "در حال بررسی وضعیت گزارش…", "Grade: F": "رتبه: F", "Critical": "بحرانی", "Warnings": "هشدارها", "Info": "اطلاعات", "Security Headers": "هدرهای امنیتی", "Social Meta": "متادیتای شبکه‌های اجتماعی", "Robots & Crawlers": "ربات‌ها و خزنده‌ها", "Broken Links": "لینک‌های خراب", "Internal Links": "لینک‌های داخلی", "Redirects": "ریدایرکت‌ها", "AI Search (llms.txt)": "جست‌وجوی هوش مصنوعی (llms.txt)", "Performance (CWV)": "عملکرد و شاخص‌های حیاتی وب", "On-Page SEO": "سئوی داخلی صفحه", "Readability": "خوانایی محتوا", "Article Extractor": "استخراج اطلاعات مقاله", "Entity SEO": "سئوی موجودیت‌ها", "Link Profile": "پروفایل لینک‌ها", "Hreflang": "زبان و منطقه (hreflang)", "Content Uniqueness": "یکتایی محتوا", "🧭 Environment Detection (LLM-Inferred)": "🧭 شناسایی محیط (تخمین هوش مصنوعی)", "Primary Platform": "پلتفرم اصلی", "Managed CMS": "سیستم مدیریت محتوای مدیریت‌شده", "Runtime Type": "نوع محیط اجرا", "HIGH": "زیاد", "Confidence": "میزان اطمینان", "Matched Signals": "نشانه‌های تطبیق‌یافته", "Detection Signals": "نشانه‌های شناسایی", "WordPress core paths detected": "مسیرهای اصلی وردپرس شناسایی شدند", "WordPress generator meta detected": "متاتگ تولیدکننده وردپرس شناسایی شد", "🛠️ Environment-Specific Fix Plan": "🛠️ برنامه اصلاح متناسب با محیط", "CRITICAL": "بحرانی", "WARNING": "هشدار", "INFO": "اطلاعات", "FIX": "اصلاح", "Missing H1 on page": "نبود عنوان H1 در صفحه", "No primary content heading was detected, which weakens topical clarity.": "عنوان اصلی محتوا شناسایی نشد و این موضوع وضوح محتوایی صفحه را کاهش می‌دهد.", "Fix:": "راهکار:", "Ensure one H1 in theme templates and avoid duplicate H1 in builders/widgets.": "در قالب صفحه یک H1 قرار دهید و از H1 تکراری در صفحه‌ساز یا ابزارک‌ها جلوگیری کنید.", "6 security headers missing": "۶ هدر امنیتی وجود ندارند", "Missing headers reduce trust and can expose the site to browser/security risks.": "نبود هدرهای امنیتی می‌تواند خطرات امنیتی مرورگر را افزایش دهد.", "Set headers via server config (Nginx/Apache) or CDN edge rules.": "هدرها را از تنظیمات سرور (Nginx/Apache) یا قوانین CDN تنظیم کنید.", "Meta description is missing or out of range": "توضیحات متا وجود ندارد یا طول آن مناسب نیست", "This can reduce SERP CTR and snippet quality.": "این مشکل می‌تواند نرخ کلیک و کیفیت نمایش نتیجه در گوگل را کاهش دهد.", "Use your SEO plugin (Yoast/RankMath/AIOSEO) or theme templates to set title/meta and OG/Twitter tags.": "برای تنظیم عنوان، توضیحات متا و تگ‌های شبکه اجتماعی از افزونه سئو یا قالب استفاده کنید.", "Title tag needs optimization": "عنوان صفحه نیاز به بهینه‌سازی دارد", "Title length/content is likely suboptimal for rankings and click-through.": "طول یا محتوای عنوان ممکن است برای رتبه و نرخ کلیک مناسب نباشد.", "No llms.txt found": "فایل llms.txt پیدا نشد", "AI crawlers and assistants have no curated machine-readable guidance for key pages.": "راهنمای ساختاریافته‌ای برای دستیارها و خزنده‌های هوش مصنوعی پیدا نشد.", "Create /llms.txt at web root or route it through your web server.": "فایل llms.txt را در ریشه سایت ایجاد کنید یا مسیر آن را در سرور تعریف کنید.", "Content readability is difficult": "خوانایی محتوا ضعیف است", "Long, complex text can reduce engagement and comprehension.": "متن طولانی و پیچیده ممکن است درک محتوا را سخت کند.", "Rewrite key sections with shorter sentences (15-20 words), shorter paragraphs (2-4 sentences), and clearer subheadings.": "بخش‌های مهم را با جمله‌های کوتاه‌تر، پاراگراف‌های مختصر و تیترهای روشن بازنویسی کنید.", "Performance measurement incomplete": "اندازه‌گیری عملکرد کامل نیست", "PageSpeed API returned an error, so CWV recommendations are less reliable.": "API پیج‌اسپید خطا داده است؛ بنابراین پیشنهادهای عملکردی قطعیت کمتری دارند.", "🚨 All Issues (4)": "🚨 همه مشکلات (۴ مورد)", "🔴 6 security headers missing — poor security posture": "🔴 ۶ هدر امنیتی وجود ندارند — پیکربندی امنیتی ضعیف", "⚠️ 11 AI crawlers not explicitly managed: GPTBot, ChatGPT-User, ClaudeBot, PerplexityBot, Google-Extended": "⚠️ ۱۱ خزنده هوش مصنوعی به‌طور مشخص مدیریت نشده‌اند: GPTBot، ChatGPT-User، ClaudeBot، PerplexityBot، Google-Extended", "⚠️ Average sentence length (37.8 words) is too long — target 15-20": "⚠️ میانگین طول جمله (۳۷٫۸ کلمه) زیاد است — هدف ۱۵ تا ۲۰ کلمه", "⚠️ Thin content (151 words) — may rank poorly": "⚠️ محتوای کم‌حجم (۱۵۱ کلمه) — ممکن است رتبه ضعیفی بگیرد", "🔒 Security Headers": "🔒 هدرهای امنیتی", "Present": "موجود", "Missing": "ناموجود", "Header": "هدر", "Status": "وضعیت", "Value / Description": "مقدار / توضیح", "Forces browsers to use HTTPS. Prevents downgrade attacks.": "مرورگر را به استفاده از HTTPS ملزم می‌کند و جلوی اتصال ناامن را می‌گیرد.", "Prevents XSS, clickjacking, and code injection.": "به کاهش حملات XSS، کلیک‌ربایی و تزریق کد کمک می‌کند.", "Prevents clickjacking by controlling iframe embedding.": "با کنترل نمایش سایت در iframe از کلیک‌ربایی جلوگیری می‌کند.", "Prevents MIME-type sniffing.": "از تشخیص حدسی نوع محتوای فایل جلوگیری می‌کند.", "Controls how much referrer info is shared.": "میزان اطلاعات ارجاع‌دهنده ارسالی را کنترل می‌کند.", "Controls browser feature access (camera, microphone, geolocation).": "دسترسی به قابلیت‌های مرورگر مانند دوربین، میکروفون و مکان را کنترل می‌کند.", "📱 Social Meta Tags": "📱 متاتگ‌های شبکه‌های اجتماعی", "Tag": "تگ", "Value": "مقدار", "🤖 Robots & AI Crawlers": "🤖 ربات‌ها و خزنده‌های هوش مصنوعی", "Sitemaps": "نقشه‌های سایت", "User-Agents": "عامل‌های کاربری", "AI Crawler Management": "مدیریت خزنده‌های هوش مصنوعی", "Crawler": "خزنده", "Details": "جزئیات", "Unmanaged": "مدیریت‌نشده", "not managed (inherits * rules)": "مدیریت نشده (قوانین عمومی * اعمال می‌شود)", "🔗 Broken Links": "🔗 لینک‌های خراب", "Healthy": "سالم", "Broken": "خراب", "Redirected": "تغییرمسیر یافته", "Timeout": "اتمام زمان انتظار", "✅ No broken links found": "✅ لینک خرابی پیدا نشد", "🕸️ Internal Link Structure": "🕸️ ساختار لینک‌های داخلی", "Pages Crawled": "صفحات خزش‌شده", "Avg Links/Page": "میانگین لینک در هر صفحه", "Orphan Pages": "صفحات یتیم", "↪️ Redirect Chain": "↪️ زنجیره تغییرمسیر", "0 hops": "۰ مرحله", "✅ No redirects — direct access": "✅ بدون تغییرمسیر — دسترسی مستقیم", "🧠 AI Search Readiness (llms.txt)": "🧠 آمادگی برای جست‌وجوی هوش مصنوعی (llms.txt)", "Not Found": "یافت نشد", "Quality Score": "امتیاز کیفیت", "TIP": "نکته", "Create /llms.txt with site name, description, and key page links": "فایل llms.txt را با نام سایت، توضیح و لینک صفحات مهم ایجاد کنید", "⚡ Performance & Core Web Vitals": "⚡ عملکرد و شاخص‌های حیاتی وب", "None": "هیچ‌کدام", "Performance": "عملکرد", "NOTE": "توجه", "PageSpeed API returned an error or was rate-limited.": "API پیج‌اسپید خطا داده یا محدودیت تعداد درخواست اعمال شده است.", "Set": "تنظیم کنید", "in a": "در یک", "file (see": "فایل (ببینید", ") or export it in your shell, then rerun. The CLI also accepts": ") یا در محیط ترمینال تعریف کنید و دوباره اجرا کنید. ابزار خط فرمان همچنین می‌پذیرد", ". The LLM can still analyze Core Web Vitals by reading the page directly.": ". هوش مصنوعی همچنان می‌تواند شاخص‌های عملکرد را با بررسی صفحه تحلیل کند.", "📝 On-Page SEO": "📝 سئوی داخلی صفحه", "Title Tag": "تگ عنوان", "Meta Desc": "توضیحات متا", "Canonical": "نشانی کنونیکال", "Element": "عنصر", "Length": "طول", "Title": "عنوان", "Meta Description": "توضیحات متا", "📖 Readability": "📖 خوانایی", "Flesch Score": "امتیاز فلش", "Grade Level": "سطح خوانایی", "Words": "کلمات", "Read Time": "زمان مطالعه", "💡 Recommendations": "💡 پیشنهادها", "Break long sentences into shorter ones for better readability": "برای خوانایی بهتر، جمله‌های بلند را کوتاه‌تر کنید", "Rewrite the flagged long sentences below using the suggested replacements.": "جمله‌های مشخص‌شده را مطابق پیشنهاد بازنویسی کنید.", "✍️ What To Replace (Before/After)": "✍️ پیشنهاد بازنویسی (قبل / بعد)", "SENTENCE (template)": "جمله (الگو)", "Current:": "متن فعلی:", "Replace with:": "جایگزین پیشنهادی:", "Homepage hero intro block is broad and hard to scan.": "متن معرفی صفحه اصلی کلی و دشوار برای مرور سریع است.", "Section descriptions mix too many topics in one long paragraph.": "توضیحات بخش‌ها موضوعات زیادی را در یک پاراگراف طولانی ترکیب کرده‌اند.", "📄 Article Info & Keywords": "📄 اطلاعات مقاله و کلمات کلیدی", "H2 Headings": "عنوان‌های H2", "Images": "تصاویر", "Extracted Keywords": "کلمات کلیدی استخراج‌شده", "Target Keyword": "کلمه کلیدی هدف", "LSI / Related Keywords": "کلمات کلیدی مرتبط / LSI", "🏛️ Entity SEO": "🏛️ سئوی موجودیت‌ها", "Wikidata": "ویکی‌داده", "Wikipedia": "ویکی‌پدیا", "sameAs Links": "لینک‌های sameAs", "Issues": "مشکلات", "🔗 Link Profile": "🔗 پروفایل لینک‌ها", "Dead Ends": "بن‌بست‌های لینک", "🌍 Hreflang / International SEO": "🌍 hreflang / سئوی بین‌المللی", "0 tags": "۰ تگ", "none": "هیچ‌کدام", "Method": "روش", "Tags Found": "تگ‌های پیدا شده", "No hreflang tags found — this is expected for single-language sites.": "هیچ تگ hreflang پیدا نشد؛ این موضوع برای سایت تک‌زبانه طبیعی است.", "📋 Content Uniqueness": "📋 یکتایی محتوا", "0 dupes / 0 thin": "۰ تکراری / ۰ کم‌حجم", "Pages Analyzed": "صفحات بررسی‌شده", "Near Duplicates": "موارد تقریباً تکراری", "Thin Pages": "صفحات کم‌محتوا", "💡 All Recommendations": "💡 تمام پیشنهادها", "🛠️ Environment-Specific Fixes": "🛠️ اصلاحات متناسب با محیط", "🔒 Security": "🔒 امنیت",  "Failed checks": "بررسی‌های ناموفق", "Passed checks": "بررسی‌های موفق", "Total checks": "کل بررسی‌ها", "Homepage": "صفحه اصلی", "Grade": "رتبه", "Homepage audit": "بررسی صفحه اصلی", "Homepage score": "امتیاز صفحه اصلی", "Missing alt": "تصاویر بدون متن جایگزین", "JSON-LD blocks": "بلوک‌های JSON-LD", "Audit in progress…": "بررسی در حال اجراست…", "Audit failed": "بررسی ناموفق بود", "Last successful audit": "آخرین بررسی موفق", "No live audit yet.": "هنوز بررسی زنده‌ای انجام نشده است.", "Starting audit…": "در حال شروع بررسی…", "Open this dashboard using Start-Kapris-SEO.bat to enable live updates.": "برای فعال شدن گزارش زنده، داشبورد را با Start-Kapris-SEO.bat اجرا کنید.", "Backend unavailable": "سرور برنامه در دسترس نیست", "Cannot start audit": "شروع بررسی ممکن نیست", "Error": "خطا", "HTTP 200": "پاسخ HTTP 200", "HTTPS": "HTTPS", "Title tag": "تگ عنوان", "Meta description": "توضیحات متا", "H1 heading": "عنوان H1", "Canonical URL": "نشانی کنونیکال", "Open Graph title": "عنوان Open Graph", "Open Graph description": "توضیحات Open Graph", "Structured data": "داده‌های ساختاریافته", "Image alt coverage": "پوشش متن جایگزین تصاویر", "The score above reflects the latest homepage-only audit. Category cards and detailed sections below are from the archived August 24, 2026 report and are not refreshed yet.": "امتیاز بالا مربوط به آخرین بررسی صفحه اصلی است. کارت‌های دسته‌بندی و جزئیات پایین از گزارش بایگانی‌شده ۲۴ اوت ۲۰۲۶ هستند و هنوز به‌روزرسانی نشده‌اند.", "Set `PAGESPEED_API_KEY` in your environment or `.env` file (see `.env.example`), then rerun. The CLI also accepts `--api-key`. Prioritize LCP/INP/CLS fixes from that output.": "کلید PAGESPEED_API_KEY را در محیط یا فایل .env تنظیم و دوباره اجرا کنید. ابزار خط فرمان نیز --api-key را می‌پذیرد. اصلاحات LCP/INP/CLS را اولویت دهید.", ": Ensure one H1 in theme templates and avoid duplicate H1 in builders/widgets.": ": یک H1 در قالب قرار دهید و از H1 تکراری در صفحه‌ساز جلوگیری کنید.", ": Use your SEO plugin (Yoast/RankMath/AIOSEO) or theme templates to set title/meta and OG/Twitter tags.": ": عنوان، متا و تگ‌های شبکه اجتماعی را از افزونه سئو یا قالب تنظیم کنید.", ": Set headers via server config (Nginx/Apache) or CDN edge rules.": ": هدرها را از تنظیمات سرور یا قوانین CDN تنظیم کنید.", ": Create /llms.txt at web root or route it through your web server.": ": فایل llms.txt را در ریشه سایت بسازید یا مسیر آن را روی سرور تعریف کنید.", "Content-Security-Policy (CSP): Add a Content-Security-Policy header restricting script/style sources.": "Content-Security-Policy (CSP): هدر CSP را برای محدود کردن منابع اسکریپت و استایل اضافه کنید.", "HSTS (Strict-Transport-Security): Add header: Strict-Transport-Security: max-age=31536000; includeSubDomains": "HSTS: هدر Strict-Transport-Security را با مقدار مناسب اضافه کنید (پس از بررسی همه زیردامنه‌ها).", "X-Frame-Options: Add header: X-Frame-Options: SAMEORIGIN": "X-Frame-Options: هدر X-Frame-Options را با مقدار SAMEORIGIN اضافه کنید.", "X-Content-Type-Options: Add header: X-Content-Type-Options: nosniff": "X-Content-Type-Options: هدر X-Content-Type-Options را با مقدار nosniff اضافه کنید.", "Referrer-Policy: Add header: Referrer-Policy: strict-origin-when-cross-origin": "Referrer-Policy: هدر Referrer-Policy را با مقدار strict-origin-when-cross-origin اضافه کنید.", "Permissions-Policy: Add header: Permissions-Policy: camera=(), microphone=(), geolocation=()": "Permissions-Policy: دسترسی به دوربین، میکروفون و موقعیت مکانی را در صورت عدم نیاز محدود کنید."};
+const source = new WeakMap();
+const root = document.documentElement;
+let lang = localStorage.getItem('kapris-dashboard-language') === 'fa' ? 'fa' : 'en';
+let busy = false;
+function convert(raw){
+  const match = raw.match(/^(\s*)([\s\S]*?)(\s*)$/);
+  if (!match) return raw;
+  let text = match[2];
+  if (dict[text]) return match[1] + dict[text] + match[3];
+  // Preserve product names, technical values, URLs and API identifiers.
+  const substitutions = [
+    [/^Homepage · Grade: (.+)$/, 'صفحه اصلی · رتبه: $1'],
+    [/^Homepage audit: (.+)$/, 'بررسی صفحه اصلی: $1'],
+    [/^Homepage score: (.+)$/, 'امتیاز صفحه اصلی: $1'],
+    [/^Last successful audit: (.+)$/, 'آخرین بررسی موفق: $1'],
+    [/^Audit failed: (.+)$/, 'بررسی ناموفق: $1'],
+    [/^Error: (.+)$/, 'خطا: $1'],
+    [/^Images: (.+)$/, 'تصاویر: $1'],
+    [/^Missing alt: (.+)$/, 'تصاویر بدون متن جایگزین: $1'],
+    [/^JSON-LD blocks: (.+)$/, 'بلوک‌های JSON-LD: $1'],
+    [/^Generated: (.+)$/, 'تولیدشده: $1'],
+    [/^([0-9]+) broken \/ ([0-9]+) total$/, '$1 خراب / $2 کل'],
+    [/^([0-9]+) hops$/, '$1 مرحله'],
+    [/^([0-9]+) tags$/, '$1 تگ'],
+    [/^([0-9]+) dupes \/ ([0-9]+) thin$/, '$1 تکراری / $2 کم‌محتوا']
+  ];
+  for(const [regex,replacement] of substitutions){
+    if(regex.test(text)) return match[1]+text.replace(regex,replacement)+match[3];
+  }
+  return raw;
+}
+function translateNode(node){
+ if(!node.parentElement || node.parentElement.closest('script,style,code,pre,textarea,[data-no-translate]'))return;
+ const value=node.nodeValue;
+ let english=source.get(node);
+ if(english === undefined || (value !== english && value !== convert(english))){english=value;source.set(node,english);}
+ const target=lang==='fa'?convert(english):english;
+ if(value!==target)node.nodeValue=target;
+}
+function translateTree(el){
+ const walker=document.createTreeWalker(el,NodeFilter.SHOW_TEXT);
+ let n;while((n=walker.nextNode()))translateNode(n);
+}
+function applyLanguage(){
+ if(busy)return;busy=true;
+ root.lang=lang;root.dir=lang==='fa'?'rtl':'ltr';
+ document.body.classList.toggle('kapris-rtl',lang==='fa');
+ document.getElementById('kapris-lang-select').value=lang;
+ document.getElementById('kapris-lang-select').title=lang==='fa'?'انتخاب زبان داشبورد':'Dashboard language';
+ translateTree(document.body);
+ busy=false;
+}
+window.kaprisSetLanguage=function(value){
+ lang=value==='fa'?'fa':'en';localStorage.setItem('kapris-dashboard-language',lang);applyLanguage();
+};
+const observer=new MutationObserver(function(records){
+ if(busy)return;
+ busy=true;
+ for(const rec of records){
+  if(rec.type==='characterData')translateNode(rec.target);
+  else for(const node of rec.addedNodes){
+   if(node.nodeType===3)translateNode(node);
+   else if(node.nodeType===1)translateTree(node);
+  }
+ }
+ busy=false;
+});
+applyLanguage();
+observer.observe(document.body,{subtree:true,childList:true,characterData:true});
+})();
+</script>
+</body>
+</html>
