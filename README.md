@@ -1,7 +1,7 @@
 
 # SI tools
 
-**SEO Universal — Amir Edition**
+**SEO Intelligence**
 
 SI tools is a desktop application for website SEO auditing and analysis, designed to help website owners and developers identify technical and on-page SEO issues.
 <img width="1919" height="1031" alt="Screenshot 2026-10-13 203005" src="https://github.com/user-attachments/assets/c69b60ea-3a5c-4a6f-88df-a8e9ee5d3f9d" />
